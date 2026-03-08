@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080810">
+<title>Финансы</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  /* ── HEADER ── */
+  .header { padding:28px 20px 0; }
+  .header-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .month-label { font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text3); font-weight:600; }
+  .add-btn {
+    background:var(--green); color:#000; border:none; border-radius:50px;
+    padding:8px 16px; font-size:13px; font-weight:700; font-family:var(--sans);
+    cursor:pointer; display:flex; align-items:center; gap:5px;
+    box-shadow:0 0 18px var(--green-glow); transition:all 0.2s; letter-spacing:0.02em;
+    text-decoration:none;
+  }
+  .add-btn:hover  { transform:scale(1.04); box-shadow:0 0 28px var(--green-glow); }
+  .add-btn:active { transform:scale(0.97); }
+
+  /* ── TODAY ── */
+  .today-block { padding:16px 20px 0; }
+  .today-amount {
+    font-family:var(--mono); font-size:52px; font-weight:700;
+    letter-spacing:-0.03em; line-height:1; color:var(--text);
+  }
+  .today-sub {
+    display:flex; gap:16px; margin-top:6px;
+  }
+  .today-sub span { font-size:12px; color:var(--text3); }
+  .today-norm { color:var(--text2) !important; font-family:var(--mono); }
+
+  /* ── MONTH PROGRESS ── */
+  .month-section { padding:20px 20px 0; }
+  .month-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .month-label2 { font-size:12px; color:var(--text2); font-weight:500; }
+  .month-amounts { font-family:var(--mono); font-size:13px; display:flex; gap:4px; align-items:baseline; }
+  .month-spent  { color:var(--text); font-weight:700; }
+  .month-total  { color:var(--text3); }
+  .day-prog { margin-top:8px; font-size:11px; color:var(--text3); display:flex; align-items:center; gap:8px; }
+  .pulse-dot {
+    width:7px; height:7px; border-radius:50%; background:var(--red);
+    animation: pulse 1.2s infinite; flex-shrink:0; display:none;
+  }
+  .pulse-dot.show { display:inline-block; }
+
+  /* ── CAT CARDS ── */
+  .cats-grid {
+    padding: 0 20px;
+    display: grid; grid-template-columns: 1fr 1fr; gap:10px;
+  }
+  @media (min-width:640px)  { .cats-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width:768px)  { .cats-grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (min-width:1000px) { .cats-grid { grid-template-columns: repeat(5, 1fr); } }
+  .cat-card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:14px; cursor:pointer; transition:all 0.2s;
+    text-decoration:none; display:block; color:inherit;
+  }
+  .cat-card:hover  { border-color:var(--border2); transform:translateY(-2px); box-shadow:0 4px 20px rgba(0,0,0,0.3); }
+  .cat-card.over   { border-color:rgba(255,77,106,0.35); background:rgba(255,77,106,0.05); }
+  .cat-card.warn   { border-color:rgba(245,200,66,0.30); background:rgba(245,200,66,0.04); }
+  .cat-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:9px; }
+  .cat-emoji  { font-size:22px; line-height:1; }
+  .cat-badge  {
+    font-size:9px; font-weight:800; letter-spacing:0.08em;
+    padding:3px 7px; border-radius:99px;
+  }
+  .cat-badge.over { background:var(--red-dim); color:var(--red); }
+  .cat-badge.warn { background:var(--yellow-dim); color:var(--yellow); }
+  .cat-badge.ok   { background:var(--green-dim); color:var(--green); }
+  .cat-name    { font-size:12px; font-weight:600; color:var(--text2); margin-bottom:6px; }
+  .cat-amounts { font-family:var(--mono); display:flex; align-items:baseline; gap:4px; margin-bottom:5px; }
+  .cat-spent   { font-size:16px; font-weight:700; color:var(--text); }
+  .cat-of      { font-size:11px; color:var(--text3); }
+  .cat-remain  { font-size:11px; font-weight:600; margin-bottom:7px; }
+  .cat-bar     { height:4px; background:var(--bg3); border-radius:99px; overflow:hidden; }
+  .cat-bar-fill { height:100%; border-radius:99px; transition:width 0.9s cubic-bezier(.4,0,.2,1); }
+
+  /* ── RECENT ── */
+  .expenses-list { padding:0 20px; display:flex; flex-direction:column; gap:6px; }
+  .expense-row   { animation: fadeIn 0.3s ease both; }
+
+  /* ── EMPTY ── */
+  .empty-msg {
+    padding:28px 20px; text-align:center; color:var(--text3); font-size:13px; line-height:1.6;
+  }
+</style>
+</head>
+<body>
+<div class="success-flash" id="flash"></div>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="header s1">
+    <div class="header-top">
+      <span class="month-label" id="monthLabel"></span>
+      <a class="add-btn" href="add.html">＋ Расход</a>
+    </div>
+  </div>
+
+  <!-- TODAY SPENT -->
+  <div class="today-block s1">
+    <div class="today-amount" id="todayAmount">0&nbsp;₽</div>
+    <div class="today-sub">
+      <span>потрачено сегодня</span>
+      <span>· норма&nbsp;<span class="today-norm" id="dailyNorm">—</span></span>
+    </div>
+  </div>
+
+  <!-- MONTH PROGRESS -->
+  <div class="month-section s2">
+    <div class="month-row">
+      <span class="month-label2">Переменные расходы</span>
+      <span class="month-amounts">
+        <span class="month-spent" id="monthSpent">0&nbsp;₽</span>
+        <span class="month-total" id="monthTotal"> / 70&nbsp;500&nbsp;₽</span>
+      </span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="monthProgress" style="width:0%"></div>
+    </div>
+    <div class="day-prog">
+      <span class="pulse-dot" id="pulseDot"></span>
+      <span id="dayProgress">День 1 из 30 · ожидаемый прогресс 3%</span>
+    </div>
+  </div>
+
+  <!-- INSIGHT -->
+  <div class="section-title s2">Инсайт</div>
+  <div class="insight s2" id="insightCard">
+    <div class="insight-icon">✨</div>
+    <div class="insight-text" id="insightText">Добавляй расходы каждый день — покажу первые паттерны через неделю.</div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="section-title s3">Категории</div>
+  <div class="cats-grid s3" id="catsGrid"></div>
+
+  <!-- RECENT -->
+  <div class="section-title s4">Последние расходы</div>
+  <div class="expenses-list s4" id="expensesList"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a class="nav-item active" href="index.html">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a class="nav-item" href="history.html">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">История</span>
+    </a>
+    <a class="nav-add" href="add.html">＋</a>
+    <a class="nav-item" href="charts.html">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Детализация</span>
+    </a>
+    <a class="nav-item" href="settings.html">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Настройки</span>
+    </a>
+  </div>
+</nav>
+
+<script src="js/app.js"></script>
+<script>
+// ─── RENDER ──────────────────────────────────────────────────────
+
+async function init() {
+  await loadBudgetConfig();
+  // One-time clear of any leftover localStorage mock data
+  if (!localStorage.getItem('ft_data_cleared_v1')) {
+    localStorage.removeItem('ft_expenses');
+    localStorage.setItem('ft_data_cleared_v1', '1');
+  }
+  await initStorage();
+  renderDashboard();
+  // Unregister any stale service workers
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
+  }
+}
+
+function renderDashboard() {
+  const config = getBudgetConfig();
+  if (!config) return;
+
+  const now          = new Date();
+  const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayOfMonth   = now.getDate();
+  const monthExp     = getMonthExpenses();
+  const todayExp     = loadExpenses().filter(e => e.date === getToday());
+
+  // Month label
+  document.getElementById('monthLabel').textContent =
+    now.toLocaleDateString('ru', { month:'long', year:'numeric' })
+       .replace(/^./, c => c.toUpperCase());
+
+  // Today
+  const todayTotal = todayExp.reduce((s, e) => s + e.amount, 0);
+  const dailyNorm  = Math.round(config.budget_summary.total_variable_budget / daysInMonth);
+  animateCount(document.getElementById('todayAmount'), todayTotal);
+  document.getElementById('dailyNorm').textContent = fmtRub(dailyNorm);
+
+  // Month progress
+  const monthTotal  = monthExp.reduce((s, e) => s + e.amount, 0);
+  const monthBudget = config.budget_summary.total_variable_budget;
+  const pct         = Math.min(monthTotal / monthBudget * 100, 100);
+  const expectedPct = (dayOfMonth / daysInMonth) * 100;
+
+  document.getElementById('monthSpent').textContent = fmtRub(monthTotal);
+  document.getElementById('monthTotal').textContent = ` / ${fmtRub(monthBudget)}`;
+
+  setTimeout(() => {
+    const bar = document.getElementById('monthProgress');
+    bar.style.width = pct + '%';
+    bar.className = 'progress-fill' + (pct > 100 ? ' over' : pct > 80 ? ' warn' : '');
+  }, 100);
+
+  document.getElementById('dayProgress').textContent =
+    `День ${dayOfMonth} из ${daysInMonth} · ожидаемый прогресс ${Math.round(expectedPct)}%`;
+
+  const dot = document.getElementById('pulseDot');
+  dot.classList.toggle('show', pct > 80 && dayOfMonth < daysInMonth);
+
+  // Insight
+  renderInsight(config, monthExp, todayTotal, dailyNorm, dayOfMonth, daysInMonth);
+
+  // Categories
+  renderCategories(config, monthExp);
+
+  // Recent
+  renderRecent(config);
+}
+
+function renderInsight(config, monthExp, todayTotal, dailyNorm, day, daysInMonth) {
+  const card = document.getElementById('insightCard');
+  const text = document.getElementById('insightText');
+
+  const foodCat   = config.categories.find(c => c.id === 'food_out');
+  const foodSpent = monthExp.filter(e => e.category_id === 'food_out').reduce((s,e) => s+e.amount, 0);
+  const foodPct   = foodSpent / foodCat.budget;
+
+  const mktCat    = config.categories.find(c => c.id === 'marketplaces');
+  const mktSpent  = monthExp.filter(e => e.category_id === 'marketplaces').reduce((s,e) => s+e.amount, 0);
+
+  const highRegret    = monthExp.filter(e => e.regret_score >= 4);
+  const highRegretSum = highRegret.reduce((s,e) => s+e.amount, 0);
+
+  // Check 3 consecutive days with regret >= 4
+  const last3Days = [...new Set(
+    monthExp.filter(e => e.regret_score >= 4).map(e => e.date)
+  )].sort().slice(-3);
+  const hasStreakRegret = last3Days.length >= 3;
+
+  if (monthExp.length === 0) {
+    card.className = 'insight s2';
+    text.innerHTML = `✨ Добавляй расходы каждый день — покажу первые паттерны через неделю`;
+  } else if (todayTotal > dailyNorm * 1.5 && todayTotal > 500) {
+    card.className = 'insight warn s2';
+    text.innerHTML = `📊 Сегодня потрачено <strong>${fmtRub(todayTotal)}</strong> — в ${(todayTotal/dailyNorm).toFixed(1)}x выше нормы`;
+  } else if (foodPct > 0.6 && day <= 20) {
+    card.className = 'insight warn s2';
+    text.innerHTML = `🍔 Еда вне дома: уже <strong>${Math.round(foodPct*100)}%</strong> бюджета за ${day} дней`;
+  } else if (mktSpent > mktCat.budget * 0.8) {
+    card.className = 'insight danger s2';
+    text.innerHTML = `📦 Маркетплейсы на грани — потрачено <strong>${fmtRub(mktSpent)}</strong> из ${fmtRub(mktCat.budget)}`;
+  } else if (hasStreakRegret) {
+    card.className = 'insight warn s2';
+    text.innerHTML = `🤔 Последние дни — сомнительные покупки на <strong>${fmtRub(highRegretSum)}</strong>`;
+  } else if (highRegretSum > 2000) {
+    card.className = 'insight warn s2';
+    text.innerHTML = `🤔 Сомнительных покупок за месяц: <strong>${fmtRub(highRegretSum)}</strong> (${highRegret.length} шт.)`;
+  } else {
+    const monthTotal = monthExp.reduce((s,e) => s+e.amount, 0);
+    card.className = 'insight s2';
+    text.innerHTML = `✅ Всё под контролем. Потрачено <strong>${fmtRub(monthTotal)}</strong> из ${fmtRub(config.budget_summary.total_variable_budget)}`;
+  }
+}
+
+function renderCategories(config, monthExp) {
+  const grid = document.getElementById('catsGrid');
+  grid.innerHTML = config.categories.map((cat, i) => {
+    const spent   = monthExp.filter(e => e.category_id === cat.id).reduce((s,e) => s+e.amount, 0);
+    const pct     = Math.min(spent / cat.budget * 100, 200);
+    const remain  = cat.budget - spent;
+    const status  = spent > cat.budget ? 'over' : spent > cat.budget * 0.8 ? 'warn' : 'ok';
+    const barColor   = status === 'over' ? '#ff4d6a' : status === 'warn' ? '#f5c842' : cat.color;
+    const remainColor = status === 'over' ? 'var(--red)' : status === 'warn' ? 'var(--yellow)' : 'var(--green)';
+    const remainText  = status === 'over'
+      ? `+${fmtRub(Math.abs(remain))} превышение`
+      : `${fmtRub(remain)} осталось`;
+    const badge = status === 'over' ? 'ЛИМИТ' : status === 'warn' ? '80%+' : 'OK';
+
+    return `
+      <a class="cat-card ${status}" href="history.html?cat=${cat.id}" style="animation:fadeIn 0.4s ${i*0.04 + 0.15}s both">
+        <div class="cat-top">
+          <span class="cat-emoji">${cat.emoji}</span>
+          <span class="cat-badge ${status}">${badge}</span>
+        </div>
+        <div class="cat-name">${cat.name}</div>
+        <div class="cat-amounts">
+          <span class="cat-spent">${Math.round(spent).toLocaleString('ru')}</span>
+          <span class="cat-of">/ ${fmtK(cat.budget)}</span>
+        </div>
+        <div class="cat-remain" style="color:${remainColor}">${remainText}</div>
+        <div class="cat-bar">
+          <div class="cat-bar-fill" style="width:0%;background:${barColor}" data-w="${Math.min(pct,100)}"></div>
+        </div>
+      </a>`;
+  }).join('');
+
+  setTimeout(() => {
+    grid.querySelectorAll('.cat-bar-fill').forEach(b => {
+      b.style.width = b.dataset.w + '%';
+    });
+  }, 200);
+}
+
+function renderRecent(config) {
+  const all  = loadExpenses().sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6);
+  const list = document.getElementById('expensesList');
+  if (all.length === 0) {
+    list.innerHTML = `<div class="empty-msg">Пока нет расходов.<br>Нажми «＋ Расход», чтобы добавить первый.</div>`;
+    return;
+  }
+  list.innerHTML = all.map((e, i) => {
+    const cat  = config.categories.find(c => c.id === e.category_id) || { emoji:'❓', name: e.category_id };
+    const dots = Array.from({length:5}, (_, idx) => {
+      const filled = idx < e.regret_score;
+      const mild   = e.regret_score <= 2;
+      return `<span class="regret-dot ${filled ? 'filled' + (mild ? ' mild' : '') : ''}"></span>`;
+    }).join('');
+    const dateObj = new Date(e.date + 'T12:00:00');
+    const dateStr = dateObj.toLocaleDateString('ru', { day:'numeric', month:'short' });
+    return `
+      <div class="expense-row" style="animation-delay:${i*0.04}s">
+        <div class="expense-emoji">${cat.emoji}</div>
+        <div class="expense-info">
+          <div class="expense-desc">${e.description || cat.name}</div>
+          <div class="expense-meta">${dateStr} · ${cat.name}</div>
+        </div>
+        <div class="expense-right">
+          <div class="expense-amount">−${e.amount.toLocaleString('ru')}&nbsp;₽</div>
+          <div class="regret-dots">${dots}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+init();
+</script>
+</body>
+</html>

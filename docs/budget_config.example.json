@@ -1,0 +1,107 @@
+{
+  "monthly_income": 295000,
+  "currency": "RUB",
+  "categories": [
+    {
+      "id": "groceries",
+      "name": "Продукты",
+      "emoji": "🛒",
+      "budget": 25000,
+      "color": "#4CAF50",
+      "notes": "ВкусВилл, Пятёрочка, Близнецы. Яндекс Лавка — только срочное"
+    },
+    {
+      "id": "food_out",
+      "name": "Еда вне дома",
+      "emoji": "🍔",
+      "budget": 8000,
+      "color": "#FF9800",
+      "notes": "Столовая МФТИ, кафе, доставка. Boltay не чаще 3-4 раз в неделю"
+    },
+    {
+      "id": "taxi",
+      "name": "Такси",
+      "emoji": "🚕",
+      "budget": 5000,
+      "color": "#FFEB3B",
+      "notes": "Яндекс Такси"
+    },
+    {
+      "id": "transport",
+      "name": "Транспорт и поезда",
+      "emoji": "🚂",
+      "budget": 6500,
+      "color": "#2196F3",
+      "notes": "Метро ~1500 + поезда домой ~5000 (сезонно)"
+    },
+    {
+      "id": "health",
+      "name": "Здоровье",
+      "emoji": "💊",
+      "budget": 3000,
+      "color": "#E91E63",
+      "notes": "Аптеки, врачи. Не экономить"
+    },
+    {
+      "id": "leisure",
+      "name": "Развлечения и досуг",
+      "emoji": "🎭",
+      "budget": 6000,
+      "color": "#9C27B0",
+      "notes": "Кино, концерты, мероприятия, хобби"
+    },
+    {
+      "id": "clothes",
+      "name": "Одежда и обувь",
+      "emoji": "👕",
+      "budget": 5000,
+      "color": "#00BCD4",
+      "notes": "Только плановые покупки, не импульсные"
+    },
+    {
+      "id": "marketplaces",
+      "name": "Маркетплейсы",
+      "emoji": "📦",
+      "budget": 5000,
+      "color": "#FF5722",
+      "notes": "Ozon, Яндекс Маркет. ЖЁСТКИЙ лимит. Правило: 24ч ожидание перед покупкой"
+    },
+    {
+      "id": "beauty",
+      "name": "Красота и уход",
+      "emoji": "💈",
+      "budget": 2000,
+      "color": "#F06292",
+      "notes": "Стрижка раз в 3 мес ~3000, в среднем 1000/мес"
+    },
+    {
+      "id": "misc",
+      "name": "Прочее",
+      "emoji": "🎲",
+      "budget": 5000,
+      "color": "#78909C",
+      "notes": "Непредвиденные расходы. Остаток — в копилку"
+    }
+  ],
+  "fixed_expenses": [
+    { "name": "Аренда квартиры", "emoji": "🏠", "amount": 65000, "day": 26 },
+    { "name": "ЖКХ", "emoji": "💡", "amount": 3000, "day": 1 },
+    { "name": "Вокал (4 занятия)", "emoji": "🎵", "amount": 10000, "day": null, "note": "Еженедельно, Алексей Б." },
+    { "name": "МФТИ", "emoji": "🎓", "amount": 2257, "day": 5 },
+    { "name": "Связь (Билайн)", "emoji": "📱", "amount": 1500, "day": 28 },
+    { "name": "Подписки (AI, VPN)", "emoji": "💻", "amount": 3000, "day": null },
+    { "name": "Услуги банка", "emoji": "🏦", "amount": 99, "day": 25 }
+  ],
+  "savings_plan": [
+    { "name": "Финансовая подушка", "emoji": "🛡", "monthly": 35000, "goal": 330000, "priority": 1 },
+    { "name": "Инвестиции", "emoji": "📈", "monthly": 25000, "goal": null, "priority": 2 },
+    { "name": "На машину", "emoji": "🚗", "monthly": 20000, "goal": 700000, "priority": 3 },
+    { "name": "Путешествия", "emoji": "✈️", "monthly": 10000, "goal": 150000, "priority": 4 }
+  ],
+  "budget_summary": {
+    "total_variable_budget": 70500,
+    "total_fixed": 84856,
+    "total_savings": 90000,
+    "free_money": 49644
+  }
+}

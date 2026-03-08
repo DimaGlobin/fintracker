@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080810">
+<title>История расходов</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  /* ── FILTERS ── */
+  .filters { padding:0 20px 0; display:flex; flex-direction:column; gap:8px; }
+  .filter-row { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+  .filter-row::-webkit-scrollbar { display:none; }
+  .filter-pill {
+    flex-shrink:0; padding:7px 14px; border-radius:20px; border:1px solid var(--border);
+    background:var(--bg3); color:var(--text2); font-size:12px; font-weight:600;
+    cursor:pointer; transition:all 0.15s; white-space:nowrap; font-family:var(--sans);
+  }
+  .filter-pill.active { background:var(--green-dim); border-color:rgba(0,232,122,0.4); color:var(--green); }
+  .filter-pill:hover { border-color:var(--border2); }
+  .filter-select {
+    flex-shrink:0; background:var(--bg3); border:1px solid var(--border);
+    border-radius:20px; padding:7px 14px; font-size:12px; font-weight:600;
+    font-family:var(--sans); color:var(--text2); outline:none; cursor:pointer;
+    transition:border-color 0.2s; color-scheme:dark;
+  }
+  .filter-select:focus { border-color:var(--border2); }
+
+  /* ── STATS CARD ── */
+  .stats-card {
+    margin:0 20px; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px;
+  }
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .stat-item { }
+  .stat-label { font-size:10px; color:var(--text3); font-weight:600; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:4px; }
+  .stat-value { font-family:var(--mono); font-size:16px; font-weight:700; color:var(--text); }
+  .stat-value.danger { color:var(--red); }
+  .stat-value.warn   { color:var(--yellow); }
+  .stats-divider { height:1px; background:var(--border); margin:12px 0; }
+  .stats-regret {
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12px; color:var(--text2);
+  }
+  .stats-regret .val { font-family:var(--mono); font-weight:700; }
+
+  /* ── EXPORT ── */
+  .export-section { padding:0 20px; }
+  .export-date-row {
+    display:flex; gap:8px; margin-bottom:8px; align-items:center;
+  }
+  .export-date-row label { font-size:11px; color:var(--text3); font-weight:600; white-space:nowrap; }
+  .export-date-input {
+    flex:1; background:var(--bg3); border:1px solid var(--border);
+    border-radius:10px; padding:8px 12px; font-size:13px;
+    font-family:var(--mono); color:var(--text); outline:none;
+    transition:border-color 0.2s; color-scheme:dark;
+  }
+  .export-date-input:focus { border-color:var(--border2); }
+  .export-btn {
+    width:100%; padding:13px; background:var(--bg3); border:1px solid var(--border);
+    border-radius:12px; color:var(--text); font-size:14px; font-weight:700;
+    font-family:var(--sans); cursor:pointer; transition:all 0.2s;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .export-btn:hover { border-color:var(--border2); background:var(--card); }
+  .export-btn:active { transform:scale(0.98); }
+  .export-hint { font-size:11px; color:var(--text3); text-align:center; margin-top:6px; }
+
+  /* ── EXPENSE LIST ── */
+  .expense-groups { padding:0 20px; display:flex; flex-direction:column; gap:0; }
+  .day-group { margin-bottom:16px; }
+  .day-header {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:8px;
+  }
+  .day-date { font-size:12px; font-weight:700; color:var(--text2); }
+  .day-total { font-family:var(--mono); font-size:12px; color:var(--text3); }
+  .day-items { display:flex; flex-direction:column; gap:6px; }
+
+  /* Swipe-to-delete container */
+  .swipe-wrap { position:relative; overflow:hidden; border-radius:12px; }
+  .swipe-inner { transition:transform 0.25s ease; }
+  .delete-reveal {
+    position:absolute; right:0; top:0; bottom:0; width:72px;
+    background:var(--red); display:flex; align-items:center; justify-content:center;
+    border-radius:0 12px 12px 0; cursor:pointer; font-size:18px;
+  }
+  .swipe-inner .expense-row { border-radius:12px; }
+
+  /* ── EMPTY ── */
+  .empty-state {
+    padding:48px 20px; text-align:center; color:var(--text3); font-size:13px; line-height:1.8;
+  }
+
+
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <div class="page-header s1">
+    <a class="page-back" href="index.html">←</a>
+    <div class="page-title">История</div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filters s1">
+    <div class="filter-row" id="periodFilter">
+      <button class="filter-pill active" data-period="month" onclick="setPeriod('month')">Этот месяц</button>
+      <button class="filter-pill" data-period="week"  onclick="setPeriod('week')">Неделя</button>
+      <button class="filter-pill" data-period="prev"  onclick="setPeriod('prev')">Прошлый мес.</button>
+      <button class="filter-pill" data-period="all"   onclick="setPeriod('all')">Всё время</button>
+    </div>
+    <div class="filter-row">
+      <select class="filter-select" id="catFilter" onchange="applyFilters()">
+        <option value="">Все категории</option>
+      </select>
+      <select class="filter-select" id="sortFilter" onchange="applyFilters()">
+        <option value="date">По дате</option>
+        <option value="amount">По сумме</option>
+        <option value="regret">По сомнению</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="section-title s2">Статистика за период</div>
+  <div class="stats-card s2" id="statsCard">
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="stats-divider"></div>
+    <div class="stats-regret" id="statsRegret"></div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="section-title s3">Экспорт</div>
+  <div class="export-section s3">
+    <div class="export-date-row">
+      <label>С</label>
+      <input type="date" class="export-date-input" id="exportFrom" onchange="syncExportDates()">
+      <label>По</label>
+      <input type="date" class="export-date-input" id="exportTo" onchange="syncExportDates()">
+    </div>
+    <button class="export-btn" onclick="doExport()">📤 Экспортировать CSV</button>
+    <div class="export-hint">Даты берутся из фильтра выше или выбери вручную</div>
+  </div>
+
+  <!-- EXPENSE LIST -->
+  <div class="section-title s4">Расходы</div>
+  <div class="expense-groups s4" id="expenseGroups"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a class="nav-item" href="index.html">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a class="nav-item active" href="history.html">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">История</span>
+    </a>
+    <a class="nav-add" href="add.html">＋</a>
+    <a class="nav-item" href="charts.html">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Детализация</span>
+    </a>
+    <a class="nav-item" href="settings.html">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Настройки</span>
+    </a>
+  </div>
+</nav>
+
+
+<script src="js/app.js"></script>
+<script>
+let currentPeriod = 'month';
+let currentFrom   = null;
+let currentTo     = null;
+
+async function init() {
+  await loadBudgetConfig();
+  await initStorage();
+  fillCatFilter();
+
+  // Pre-select category from URL param (?cat=food_out)
+  const params = new URLSearchParams(window.location.search);
+  const catParam = params.get('cat');
+  if (catParam) {
+    document.getElementById('catFilter').value = catParam;
+  }
+
+  setPeriod('month');
+
+  if (window.location.hash === '#export') {
+    setTimeout(doExport, 300);
+  }
+}
+
+function fillCatFilter() {
+  const config = getBudgetConfig();
+  if (!config) return;
+  const sel = document.getElementById('catFilter');
+  config.categories.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value       = cat.id;
+    opt.textContent = cat.emoji + ' ' + cat.name;
+    sel.appendChild(opt);
+  });
+}
+
+function setPeriod(period) {
+  currentPeriod = period;
+  document.querySelectorAll('.filter-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.period === period);
+  });
+  const now = new Date();
+  if (period === 'month') {
+    currentFrom = getMonthPrefix() + '-01';
+    currentTo   = getToday();
+  } else if (period === 'week') {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 6);
+    currentFrom = d.toISOString().split('T')[0];
+    currentTo   = getToday();
+  } else if (period === 'prev') {
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const last = new Date(now.getFullYear(), now.getMonth(), 0);
+    currentFrom = prev.toISOString().split('T')[0];
+    currentTo   = last.toISOString().split('T')[0];
+  } else {
+    currentFrom = null;
+    currentTo   = null;
+  }
+  // Sync export date inputs with period
+  const fromEl = document.getElementById('exportFrom');
+  const toEl   = document.getElementById('exportTo');
+  if (fromEl) fromEl.value = currentFrom || '';
+  if (toEl)   toEl.value   = currentTo   || '';
+  applyFilters();
+}
+
+function syncExportDates() {
+  // When user manually changes export dates, deselect period pills
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  currentPeriod = 'custom';
+  currentFrom = document.getElementById('exportFrom').value || null;
+  currentTo   = document.getElementById('exportTo').value   || null;
+  applyFilters();
+}
+
+function applyFilters() {
+  const config   = getBudgetConfig();
+  const catId    = document.getElementById('catFilter').value;
+  const sortMode = document.getElementById('sortFilter').value;
+
+  let expenses = getExpenses(currentFrom, currentTo);
+  if (catId) expenses = expenses.filter(e => e.category_id === catId);
+
+  if (sortMode === 'amount') {
+    expenses.sort((a,b) => b.amount - a.amount);
+  } else if (sortMode === 'regret') {
+    expenses.sort((a,b) => b.regret_score - a.regret_score || new Date(b.date) - new Date(a.date));
+  } else {
+    expenses.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+
+  renderStats(config, expenses);
+  renderList(config, expenses, sortMode);
+}
+
+function renderStats(config, expenses) {
+  const total     = expenses.reduce((s,e) => s+e.amount, 0);
+  const days      = new Set(expenses.map(e => e.date)).size || 1;
+  const avgDay    = total / days;
+  const byCat     = {};
+  expenses.forEach(e => { byCat[e.category_id] = (byCat[e.category_id] || 0) + e.amount; });
+  const topCatId  = Object.entries(byCat).sort((a,b) => b[1]-a[1])[0];
+  const topCat    = topCatId ? config?.categories.find(c => c.id === topCatId[0]) : null;
+  const avgRegret = expenses.length
+    ? expenses.reduce((s,e) => s+e.regret_score,0) / expenses.length : 0;
+  const sombres   = expenses.filter(e => e.regret_score >= 4);
+  const sombreSum = sombres.reduce((s,e) => s+e.amount,0);
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-item">
+      <div class="stat-label">Потрачено</div>
+      <div class="stat-value">${fmtRub(total)}</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Ср. в день</div>
+      <div class="stat-value">${fmtRub(avgDay)}</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Топ категория</div>
+      <div class="stat-value" style="font-size:13px">${topCat ? topCat.emoji + ' ' + topCat.name : '—'}</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Транзакций</div>
+      <div class="stat-value">${expenses.length}</div>
+    </div>`;
+
+  const regretCls = avgRegret > 2.5 ? 'danger' : '';
+  document.getElementById('statsRegret').innerHTML = `
+    <span>Ср. оценка сомнения</span>
+    <span class="val ${regretCls}">${avgRegret.toFixed(1)} / 5</span>
+    ${sombres.length > 0 ? `<span style="color:var(--text3);margin-left:8px">· ${sombres.length} сомн. на ${fmtRub(sombreSum)}</span>` : ''}`;
+}
+
+function renderList(config, expenses, sortMode) {
+  const groups = document.getElementById('expenseGroups');
+  if (expenses.length === 0) {
+    groups.innerHTML = `<div class="empty-state">Нет расходов за выбранный период</div>`;
+    return;
+  }
+
+  if (sortMode !== 'date') {
+    // Flat list without grouping
+    groups.innerHTML = expenses.map(e => renderExpenseRow(config, e)).join('');
+    attachSwipe();
+    return;
+  }
+
+  // Group by date
+  const byDate = {};
+  expenses.forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+  const sortedDates = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
+
+  groups.innerHTML = sortedDates.map(date => {
+    const dayExp   = byDate[date];
+    const dayTotal = dayExp.reduce((s,e) => s+e.amount, 0);
+    const dateObj  = new Date(date + 'T12:00:00');
+    const dateStr  = dateObj.toLocaleDateString('ru', { weekday:'short', day:'numeric', month:'long' });
+    return `
+      <div class="day-group">
+        <div class="day-header">
+          <span class="day-date">${dateStr.replace(/^./, c=>c.toUpperCase())}</span>
+          <span class="day-total">${fmtRub(dayTotal)}</span>
+        </div>
+        <div class="day-items">
+          ${dayExp.map(e => renderExpenseRow(config, e)).join('')}
+        </div>
+      </div>`;
+  }).join('');
+
+  attachSwipe();
+}
+
+function renderExpenseRow(config, e) {
+  const cat  = config?.categories.find(c => c.id === e.category_id) || { emoji:'❓', name: e.category_id };
+  const dots = Array.from({length:5}, (_, idx) => {
+    const filled = idx < e.regret_score;
+    const mild   = e.regret_score <= 2;
+    return `<span class="regret-dot ${filled ? 'filled' + (mild?' mild':'') : ''}"></span>`;
+  }).join('');
+  const dateObj = new Date(e.date + 'T12:00:00');
+  const dateStr = dateObj.toLocaleDateString('ru', { day:'2-digit', month:'2-digit' });
+
+  return `
+    <div class="swipe-wrap" data-id="${e.id}">
+      <div class="swipe-inner">
+        <div class="expense-row">
+          <div class="expense-emoji">${cat.emoji}</div>
+          <div class="expense-info">
+            <div class="expense-desc">${e.description || cat.name}</div>
+            <div class="expense-meta">${dateStr} · ${cat.name}</div>
+          </div>
+          <div class="expense-right">
+            <div class="expense-amount">−${e.amount.toLocaleString('ru')}&nbsp;₽</div>
+            <div class="regret-dots">${dots}</div>
+          </div>
+        </div>
+      </div>
+      <div class="delete-reveal" onclick="confirmDelete(${e.id})">🗑</div>
+    </div>`;
+}
+
+// ── SWIPE TO DELETE ────────────────────────────────────────────────
+function attachSwipe() {
+  document.querySelectorAll('.swipe-wrap').forEach(wrap => {
+    let startX = 0, dx = 0, swiped = false;
+    const inner = wrap.querySelector('.swipe-inner');
+    wrap.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      swiped = false;
+      inner.style.transition = 'none';
+    }, { passive:true });
+    wrap.addEventListener('touchmove', e => {
+      dx = e.touches[0].clientX - startX;
+      if (dx < 0) {
+        inner.style.transform = `translateX(${Math.max(dx, -72)}px)`;
+        swiped = true;
+      }
+    }, { passive:true });
+    wrap.addEventListener('touchend', () => {
+      inner.style.transition = '';
+      if (dx < -40) {
+        inner.style.transform = 'translateX(-72px)';
+      } else {
+        inner.style.transform = '';
+      }
+    });
+  });
+}
+
+function confirmDelete(id) {
+  if (!confirm('Удалить этот расход?')) return;
+  deleteExpense(id);
+  applyFilters();
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────
+function doExport() {
+  const from = document.getElementById('exportFrom').value || currentFrom;
+  const to   = document.getElementById('exportTo').value   || currentTo;
+  exportToCSV(from || null, to || null);
+}
+
+
+init();
+</script>
+</body>
+</html>

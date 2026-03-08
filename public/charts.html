@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080810">
+<title>Аналитика</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* ── PERIOD TABS ── */
+  .period-tabs { padding: 0 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .tab-pill {
+    padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--bg3); color: var(--text2); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap; font-family: var(--sans);
+  }
+  .tab-pill.active { background: var(--green-dim); border-color: rgba(0,232,122,0.4); color: var(--green); }
+  .tab-pill:hover  { border-color: var(--border2); }
+
+  /* ── CHART CARD ── */
+  .chart-card {
+    margin: 0 20px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px;
+    position: relative;
+  }
+  .chart-title {
+    font-size: 13px; font-weight: 700; color: var(--text2);
+    margin-bottom: 4px; letter-spacing: 0.02em;
+  }
+  .chart-subtitle {
+    font-size: 11px; color: var(--text3); margin-bottom: 16px;
+  }
+  .chart-wrap { position: relative; }
+  .chart-wrap canvas { max-height: 220px; }
+
+  /* ── SUMMARY CHIPS ── */
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px;
+    display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 100px;
+  }
+  .chip-label { font-size: 9px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; }
+  .chip-value { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--text); }
+  .chip-value.green  { color: var(--green); }
+  .chip-value.red    { color: var(--red); }
+  .chip-value.yellow { color: var(--yellow); }
+
+  /* ── BUDGET BARS ── */
+  .budget-rows { display: flex; flex-direction: column; gap: 10px; }
+  .budget-row  { }
+  .budget-row-top {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;
+  }
+  .budget-row-name  { font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .budget-row-nums  { font-family: var(--mono); font-size: 11px; color: var(--text3); white-space: nowrap; }
+  .budget-row-nums .over { color: var(--red); font-weight: 700; }
+  .budget-track { height: 8px; background: var(--bg3); border-radius: 99px; overflow: visible; position: relative; }
+  .budget-fill  { height: 100%; border-radius: 99px; transition: width 0.9s cubic-bezier(.4,0,.2,1); }
+  .budget-norm-line {
+    position: absolute; top: -3px; bottom: -3px; width: 2px;
+    background: rgba(255,255,255,0.2); border-radius: 2px;
+  }
+
+  /* ── REGRET BREAKDOWN ── */
+  .regret-rows { display: flex; flex-direction: column; gap: 6px; }
+  .regret-row-item {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .regret-row-score {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    width: 18px; text-align: center; flex-shrink: 0;
+  }
+  .regret-row-label { font-size: 11px; color: var(--text3); width: 90px; flex-shrink: 0; }
+  .regret-bar-track { flex: 1; height: 6px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .regret-bar-fill  { height: 100%; border-radius: 99px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+  .regret-row-meta  { font-family: var(--mono); font-size: 10px; color: var(--text3); white-space: nowrap; width: 80px; text-align: right; flex-shrink: 0; }
+
+  /* ── TOP EXPENSES ── */
+  .top-list { display: flex; flex-direction: column; gap: 6px; }
+  .top-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: var(--bg3); border-radius: 10px;
+  }
+  .top-rank { font-family: var(--mono); font-size: 11px; color: var(--text3); width: 20px; text-align: center; flex-shrink: 0; }
+  .top-info { flex: 1; min-width: 0; }
+  .top-desc { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top-meta { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .top-amount { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+
+  /* ── EMPTY ── */
+  .empty-chart { padding: 32px; text-align: center; color: var(--text3); font-size: 13px; }
+
+  /* ── TREND LEGEND ── */
+  .trend-legend { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .legend-item  { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); }
+  .legend-dot   { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-line  { width: 16px; height: 2px; border-radius: 2px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <div class="page-header s1">
+    <div class="page-title">Аналитика</div>
+  </div>
+
+  <!-- PERIOD TABS -->
+  <div class="period-tabs s1" id="periodTabs">
+    <button class="tab-pill active" data-p="month"  onclick="setPeriod('month')">Этот месяц</button>
+    <button class="tab-pill"        data-p="week"   onclick="setPeriod('week')">7 дней</button>
+    <button class="tab-pill"        data-p="prev"   onclick="setPeriod('prev')">Прошлый мес.</button>
+    <button class="tab-pill"        data-p="all"    onclick="setPeriod('all')">Всё время</button>
+  </div>
+
+  <!-- SUMMARY CHIPS -->
+  <div class="section-title s1">Итого</div>
+  <div style="padding: 0 20px" class="s1">
+    <div class="chips" id="summaryChips"></div>
+  </div>
+
+  <!-- DAILY SPENDING CHART -->
+  <div class="section-title s2">Траты по дням</div>
+  <div class="chart-card s2">
+    <div class="chart-title">Расходы за период</div>
+    <div class="chart-subtitle" id="dailySubtitle"></div>
+    <div class="trend-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Расходы за день</div>
+      <div class="legend-item"><div class="legend-line" style="background:rgba(245,200,66,0.7)"></div>Дневная норма</div>
+    </div>
+    <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+  </div>
+
+  <!-- CATEGORY DONUT -->
+  <div class="section-title s3">По категориям</div>
+  <div class="chart-card s3" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+    <div style="flex:0 0 180px;max-width:180px;margin:0 auto">
+      <canvas id="donutChart" style="max-height:180px"></canvas>
+    </div>
+    <div id="donutLegend" style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:6px;"></div>
+  </div>
+
+  <!-- BUDGET VS FACT -->
+  <div class="section-title s3">Бюджет vs Факт</div>
+  <div class="chart-card s3">
+    <div class="chart-title">Использование бюджета по категориям</div>
+    <div class="chart-subtitle">Серая линия — 100% бюджета</div>
+    <div class="budget-rows" id="budgetRows"></div>
+  </div>
+
+  <!-- REGRET BREAKDOWN -->
+  <div class="section-title s4">Оценка покупок</div>
+  <div class="chart-card s4">
+    <div class="chart-title">Распределение по полезности</div>
+    <div class="chart-subtitle" id="regretSubtitle"></div>
+    <div class="regret-rows" id="regretRows"></div>
+  </div>
+
+  <!-- TOP EXPENSES -->
+  <div class="section-title s4">Топ расходов</div>
+  <div class="chart-card s4" style="padding:14px">
+    <div class="top-list" id="topList"></div>
+  </div>
+
+  <!-- WEEKLY PATTERN -->
+  <div class="section-title s5">По дням недели</div>
+  <div class="chart-card s5">
+    <div class="chart-title">Средние расходы по дням недели</div>
+    <div class="chart-subtitle">Когда тратишь больше всего</div>
+    <div class="chart-wrap"><canvas id="weekdayChart"></canvas></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a class="nav-item" href="index.html">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a class="nav-item" href="history.html">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">История</span>
+    </a>
+    <a class="nav-add" href="add.html">＋</a>
+    <a class="nav-item active" href="charts.html">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Детализация</span>
+    </a>
+    <a class="nav-item" href="settings.html">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Настройки</span>
+    </a>
+  </div>
+</nav>
+
+<script src="js/app.js"></script>
+<script>
+// ─── CHART.JS GLOBAL DEFAULTS ────────────────────────────────────
+
+Chart.defaults.color           = '#888899';
+Chart.defaults.font.family     = "'Manrope', sans-serif";
+Chart.defaults.font.size       = 11;
+Chart.defaults.plugins.legend.display = false;
+Chart.defaults.plugins.tooltip.backgroundColor = '#1a1a2e';
+Chart.defaults.plugins.tooltip.borderColor     = 'rgba(255,255,255,0.1)';
+Chart.defaults.plugins.tooltip.borderWidth     = 1;
+Chart.defaults.plugins.tooltip.padding         = 10;
+Chart.defaults.plugins.tooltip.cornerRadius    = 8;
+Chart.defaults.plugins.tooltip.titleFont       = { weight: '700', size: 12 };
+
+const GRID_COLOR = 'rgba(255,255,255,0.06)';
+
+// ─── STATE ───────────────────────────────────────────────────────
+
+let currentFrom = null;
+let currentTo   = null;
+let dailyChartInst   = null;
+let donutChartInst   = null;
+let weekdayChartInst = null;
+
+const REGRET_COLORS = ['#00e87a','#00c864','#f5c842','#ffa032','#ff643c','#ff4d6a'];
+const REGRET_NAMES  = ['Необходимо','Нужно','Окей','Сомнение','Лишнее','Зря'];
+
+// ─── INIT ────────────────────────────────────────────────────────
+
+async function init() {
+  await loadBudgetConfig();
+  await initStorage();
+  setPeriod('month');
+}
+
+function setPeriod(p) {
+  document.querySelectorAll('.tab-pill').forEach(t => t.classList.toggle('active', t.dataset.p === p));
+  const now = new Date();
+  if (p === 'month') {
+    currentFrom = getMonthPrefix() + '-01';
+    currentTo   = getToday();
+  } else if (p === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - 6);
+    currentFrom = d.toISOString().split('T')[0];
+    currentTo   = getToday();
+  } else if (p === 'prev') {
+    const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const last  = new Date(now.getFullYear(), now.getMonth(), 0);
+    currentFrom = first.toISOString().split('T')[0];
+    currentTo   = last.toISOString().split('T')[0];
+  } else {
+    currentFrom = null;
+    currentTo   = null;
+  }
+  renderAll();
+}
+
+// ─── RENDER ALL ──────────────────────────────────────────────────
+
+function renderAll() {
+  const config   = getBudgetConfig();
+  const expenses = getExpenses(currentFrom, currentTo);
+  if (!config) return;
+
+  renderSummary(config, expenses);
+  renderDailyChart(expenses, config);
+  renderDonut(config, expenses);
+  renderBudgetBars(config, expenses);
+  renderRegretBreakdown(expenses);
+  renderTop(config, expenses);
+  renderWeekdayChart(expenses);
+}
+
+// ─── SUMMARY CHIPS ───────────────────────────────────────────────
+
+function renderSummary(config, expenses) {
+  const total    = expenses.reduce((s,e) => s+e.amount, 0);
+  const days     = new Set(expenses.map(e => e.date)).size || 1;
+  const avgDay   = total / days;
+  const budget   = config.budget_summary.total_variable_budget;
+  const pct      = budget > 0 ? Math.round(total / budget * 100) : 0;
+
+  const highRegret    = expenses.filter(e => e.regret_score >= 4);
+  const highRegretSum = highRegret.reduce((s,e) => s+e.amount, 0);
+  const saved         = total > 0 ? Math.max(0, budget - total) : 0;
+
+  const pctClass = pct > 100 ? 'red' : pct > 80 ? 'yellow' : 'green';
+
+  document.getElementById('summaryChips').innerHTML = `
+    <div class="chip">
+      <div class="chip-label">Потрачено</div>
+      <div class="chip-value">${fmtRub(total)}</div>
+    </div>
+    <div class="chip">
+      <div class="chip-label">От бюджета</div>
+      <div class="chip-value ${pctClass}">${pct}%</div>
+    </div>
+    <div class="chip">
+      <div class="chip-label">Ср/день</div>
+      <div class="chip-value">${fmtRub(avgDay)}</div>
+    </div>
+    <div class="chip">
+      <div class="chip-label">Сомнит. трат</div>
+      <div class="chip-value ${highRegretSum > 0 ? 'red' : 'green'}">${fmtRub(highRegretSum)}</div>
+    </div>`;
+}
+
+// ─── DAILY CHART ─────────────────────────────────────────────────
+
+function renderDailyChart(expenses, config) {
+  if (dailyChartInst) { dailyChartInst.destroy(); dailyChartInst = null; }
+
+  const byDate = {};
+  expenses.forEach(e => { byDate[e.date] = (byDate[e.date] || 0) + e.amount; });
+
+  // Build date range
+  const dates = buildDateRange(currentFrom, currentTo);
+  if (dates.length === 0) { showEmptyChart('dailyChart'); return; }
+
+  const values = dates.map(d => byDate[d] || 0);
+  const labels = dates.map(d => {
+    const dt = new Date(d + 'T12:00:00');
+    return dt.toLocaleDateString('ru', { day:'numeric', month:'short' });
+  });
+
+  // Daily norm
+  const daysInMonth = currentFrom
+    ? new Date(new Date(currentFrom).getFullYear(), new Date(currentFrom).getMonth()+1, 0).getDate()
+    : 30;
+  const norm = Math.round(config.budget_summary.total_variable_budget / daysInMonth);
+
+  const ctx = document.getElementById('dailyChart').getContext('2d');
+
+  // Color bars: green if <= norm, yellow if <= norm*1.5, red if > norm*1.5
+  const barColors = values.map(v =>
+    v === 0 ? 'rgba(255,255,255,0.04)' :
+    v <= norm ? 'rgba(0,232,122,0.7)' :
+    v <= norm * 1.5 ? 'rgba(245,200,66,0.75)' : 'rgba(255,77,106,0.75)'
+  );
+
+  document.getElementById('dailySubtitle').textContent =
+    `${dates.length} дней · дневная норма ${fmtRub(norm)}`;
+
+  dailyChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Расходы',
+          data: values,
+          backgroundColor: barColors,
+          borderRadius: 4,
+          borderSkipped: false,
+          order: 2,
+        },
+        {
+          label: 'Норма',
+          data: Array(dates.length).fill(norm),
+          type: 'line',
+          borderColor: 'rgba(245,200,66,0.6)',
+          borderWidth: 1.5,
+          borderDash: [4, 3],
+          pointRadius: 0,
+          fill: false,
+          order: 1,
+          tension: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          grid: { color: GRID_COLOR },
+          ticks: { maxTicksLimit: 10, maxRotation: 0 }
+        },
+        y: {
+          grid: { color: GRID_COLOR },
+          ticks: {
+            callback: v => v >= 1000 ? (v/1000).toFixed(0)+'к' : v
+          },
+          beginAtZero: true,
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label === 'Норма') return `Норма: ${fmtRub(ctx.raw)}`;
+              return `Потрачено: ${fmtRub(ctx.raw)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ─── DONUT CHART ─────────────────────────────────────────────────
+
+function renderDonut(config, expenses) {
+  if (donutChartInst) { donutChartInst.destroy(); donutChartInst = null; }
+
+  const byCat = {};
+  expenses.forEach(e => { byCat[e.category_id] = (byCat[e.category_id] || 0) + e.amount; });
+
+  const nonZero = config.categories.filter(c => byCat[c.id] > 0)
+    .sort((a,b) => byCat[b.id] - byCat[a.id]);
+
+  if (nonZero.length === 0) { showEmptyChart('donutChart'); return; }
+
+  const total = nonZero.reduce((s,c) => s + byCat[c.id], 0);
+
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  donutChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: nonZero.map(c => c.name),
+      datasets: [{
+        data:            nonZero.map(c => byCat[c.id]),
+        backgroundColor: nonZero.map(c => c.color + 'cc'),
+        borderColor:     nonZero.map(c => c.color),
+        borderWidth: 1.5,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      cutout: '62%',
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${fmtRub(ctx.raw)}  (${Math.round(ctx.raw/total*100)}%)`
+          }
+        }
+      }
+    }
+  });
+
+  // Custom legend
+  document.getElementById('donutLegend').innerHTML = nonZero.map(c => {
+    const amt = byCat[c.id];
+    const pct = Math.round(amt / total * 100);
+    return `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.emoji} ${c.name}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono)">${fmtRub(amt)} · ${pct}%</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── BUDGET BARS ─────────────────────────────────────────────────
+
+function renderBudgetBars(config, expenses) {
+  const byCat = {};
+  expenses.forEach(e => { byCat[e.category_id] = (byCat[e.category_id] || 0) + e.amount; });
+
+  const rows = config.categories
+    .map(c => ({ ...c, spent: byCat[c.id] || 0 }))
+    .sort((a,b) => (b.spent/b.budget) - (a.spent/a.budget));
+
+  document.getElementById('budgetRows').innerHTML = rows.map(c => {
+    const pct    = Math.min(c.spent / c.budget * 100, 100);
+    const over   = c.spent > c.budget;
+    const warn   = c.spent > c.budget * 0.8;
+    const color  = over ? '#ff4d6a' : warn ? '#f5c842' : c.color;
+    const remain = c.budget - c.spent;
+    const numsHtml = over
+      ? `<span class="over">+${fmtRub(Math.abs(remain))}</span>`
+      : `${fmtRub(c.spent)} / ${fmtRub(c.budget)}`;
+
+    return `
+      <div class="budget-row">
+        <div class="budget-row-top">
+          <div class="budget-row-name">${c.emoji} ${c.name}</div>
+          <div class="budget-row-nums">${numsHtml}</div>
+        </div>
+        <div class="budget-track">
+          <div class="budget-fill" style="width:${pct}%;background:${color}"></div>
+          <div class="budget-norm-line" style="left:100%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── REGRET BREAKDOWN ────────────────────────────────────────────
+
+function renderRegretBreakdown(expenses) {
+  if (expenses.length === 0) {
+    document.getElementById('regretRows').innerHTML = '<div class="empty-chart">Нет данных</div>';
+    return;
+  }
+
+  const byScore = Array.from({length:6}, (_,i) => ({
+    score: i,
+    count: 0,
+    total: 0,
+  }));
+  expenses.forEach(e => {
+    const s = Math.min(Math.max(0, Math.round(e.regret_score)), 5);
+    byScore[s].count++;
+    byScore[s].total += e.amount;
+  });
+
+  const maxCount = Math.max(...byScore.map(s => s.count), 1);
+  const sombresTotal = byScore.filter(s => s.score >= 4).reduce((a,s) => a+s.total, 0);
+
+  document.getElementById('regretSubtitle').textContent =
+    sombresTotal > 0
+      ? `Сомнительных покупок (≥4): ${fmtRub(sombresTotal)}`
+      : 'Все покупки с низким regret-score — отличная работа!';
+
+  document.getElementById('regretRows').innerHTML = byScore.map(s => `
+    <div class="regret-row-item">
+      <div class="regret-row-score" style="color:${REGRET_COLORS[s.score]}">${s.score}</div>
+      <div class="regret-row-label">${REGRET_NAMES[s.score]}</div>
+      <div class="regret-bar-track">
+        <div class="regret-bar-fill" style="width:${s.count/maxCount*100}%;background:${REGRET_COLORS[s.score]}"></div>
+      </div>
+      <div class="regret-row-meta">${s.count} шт · ${fmtRub(s.total)}</div>
+    </div>`).join('');
+}
+
+// ─── TOP EXPENSES ────────────────────────────────────────────────
+
+function renderTop(config, expenses) {
+  const top = [...expenses].sort((a,b) => b.amount - a.amount).slice(0, 8);
+  if (top.length === 0) {
+    document.getElementById('topList').innerHTML = '<div class="empty-chart">Нет данных</div>';
+    return;
+  }
+  document.getElementById('topList').innerHTML = top.map((e, i) => {
+    const cat = config.categories.find(c => c.id === e.category_id) || { emoji:'❓', name: e.category_id };
+    const dt  = new Date(e.date + 'T12:00:00');
+    const ds  = dt.toLocaleDateString('ru', { day:'numeric', month:'short' });
+    return `
+      <div class="top-item">
+        <div class="top-rank">${i+1}</div>
+        <div class="top-info">
+          <div class="top-desc">${e.description || cat.name}</div>
+          <div class="top-meta">${ds} · ${cat.emoji} ${cat.name}</div>
+        </div>
+        <div class="top-amount">${fmtRub(e.amount)}</div>
+      </div>`;
+  }).join('');
+}
+
+// ─── WEEKDAY CHART ───────────────────────────────────────────────
+
+function renderWeekdayChart(expenses) {
+  if (weekdayChartInst) { weekdayChartInst.destroy(); weekdayChartInst = null; }
+  if (expenses.length === 0) { showEmptyChart('weekdayChart'); return; }
+
+  const DAYS = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const sums  = Array(7).fill(0);
+  const counts = Array(7).fill(0);
+
+  expenses.forEach(e => {
+    const dow = new Date(e.date + 'T12:00:00').getDay();
+    sums[dow]  += e.amount;
+    counts[dow]++;
+  });
+
+  // Reorder Mon–Sun
+  const order  = [1,2,3,4,5,6,0];
+  const labels = order.map(d => DAYS[d]);
+  const avgs   = order.map(d => counts[d] > 0 ? Math.round(sums[d] / counts[d]) : 0);
+  const maxAvg = Math.max(...avgs, 1);
+
+  const ctx = document.getElementById('weekdayChart').getContext('2d');
+  weekdayChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: avgs,
+        backgroundColor: avgs.map(v => {
+          const ratio = v / maxAvg;
+          if (ratio > 0.8) return 'rgba(255,77,106,0.7)';
+          if (ratio > 0.5) return 'rgba(245,200,66,0.7)';
+          return 'rgba(0,232,122,0.65)';
+        }),
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        x: { grid: { color: GRID_COLOR } },
+        y: {
+          grid: { color: GRID_COLOR },
+          beginAtZero: true,
+          ticks: { callback: v => v >= 1000 ? (v/1000).toFixed(0)+'к' : v }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: ctx => ` Среднее: ${fmtRub(ctx.raw)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+
+function buildDateRange(from, to) {
+  if (!from && !to) {
+    // Last 30 days
+    const arr = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      arr.push(d.toISOString().split('T')[0]);
+    }
+    return arr;
+  }
+  const arr  = [];
+  const end  = new Date((to || getToday()) + 'T12:00:00');
+  const cur  = new Date(from + 'T12:00:00');
+  while (cur <= end) {
+    arr.push(cur.toISOString().split('T')[0]);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return arr;
+}
+
+function showEmptyChart(id) {
+  const canvas = document.getElementById(id);
+  if (canvas) {
+    canvas.style.display = 'none';
+    const msg = document.createElement('div');
+    msg.className = 'empty-chart';
+    msg.textContent = 'Нет данных за период';
+    canvas.parentNode.appendChild(msg);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

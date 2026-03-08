@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080810">
+<title>Настройки</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  /* ── SECTION BLOCK ── */
+  .settings-block { margin:0 20px 16px; }
+  .settings-block .card { padding:0; overflow:hidden; }
+  .settings-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:13px 16px; border-bottom:1px solid var(--border);
+    gap:12px;
+  }
+  .settings-row:last-child { border-bottom:none; }
+  .settings-row-label { font-size:14px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:8px; }
+  .settings-row-sub   { font-size:11px; color:var(--text3); margin-top:2px; }
+  .settings-row-left  { min-width:0; flex:1; }
+
+  /* ── BUDGET INPUT ── */
+  .budget-input {
+    font-family:var(--mono); font-size:15px; font-weight:700;
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px;
+    padding:8px 12px; color:var(--text); outline:none; width:130px;
+    text-align:right; transition:border-color 0.2s;
+  }
+  .budget-input:focus { border-color:rgba(0,232,122,0.4); }
+  .budget-rub { font-size:13px; color:var(--text3); margin-left:4px; }
+
+  /* ── INCOME ROW ── */
+  .income-row {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px 20px;
+    margin:0 20px 16px;
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+  }
+  .income-label { font-size:13px; color:var(--text2); font-weight:600; }
+  .income-input {
+    font-family:var(--mono); font-size:20px; font-weight:700;
+    background:transparent; border:none; border-bottom:2px solid var(--border);
+    color:var(--text); outline:none; width:150px; text-align:right;
+    padding-bottom:4px; transition:border-color 0.2s;
+  }
+  .income-input:focus { border-color:var(--green); }
+
+  /* ── TOTAL ROW ── */
+  .total-row {
+    margin:0 20px 8px; padding:12px 16px;
+    background:var(--green-dim); border:1px solid rgba(0,232,122,0.18);
+    border-radius:12px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .total-row.warn { background:var(--red-dim); border-color:rgba(255,77,106,0.2); }
+  .total-label { font-size:13px; color:var(--text2); font-weight:600; }
+  .total-val   { font-family:var(--mono); font-size:15px; font-weight:800; color:var(--green); }
+  .total-row.warn .total-val { color:var(--red); }
+  .total-warn-text { font-size:11px; color:var(--red); margin:0 20px 12px; }
+
+  /* ── FIXED EXPENSES ── */
+  .fixed-amount { font-family:var(--mono); font-size:14px; font-weight:700; color:var(--text3); }
+  .fixed-input {
+    font-family:var(--mono); font-size:14px; font-weight:700;
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    padding:6px 10px; color:var(--text); outline:none; width:100px;
+    text-align:right; transition:border-color 0.2s;
+  }
+  .fixed-input:focus { border-color:rgba(0,232,122,0.4); }
+  .fixed-name-input {
+    background:transparent; border:none; outline:none;
+    font-size:14px; font-weight:600; color:var(--text);
+    font-family:var(--sans); min-width:0; flex:1;
+  }
+  .fixed-emoji-input {
+    background:transparent; border:none; outline:none;
+    font-size:18px; width:28px; text-align:center; cursor:pointer;
+  }
+  .fixed-del { background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:4px; }
+  .fixed-del:hover { color:var(--red); }
+  .add-btn-row {
+    padding:10px 16px; text-align:center; border-top:1px solid var(--border);
+    cursor:pointer; font-size:13px; color:var(--text3); font-weight:600;
+    font-family:var(--sans); transition:color 0.2s;
+  }
+  .add-btn-row:hover { color:var(--text2); }
+
+  /* ── FILE STORAGE ── */
+  .fs-card {
+    margin: 0 20px 8px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .fs-card.connected { border-color: rgba(0,232,122,0.3); background: var(--green-dim); }
+  .fs-card.pending   { border-color: rgba(245,200,66,0.3); background: var(--yellow-dim); }
+  .fs-status { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .fs-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .fs-dot.on  { background:var(--green); box-shadow:0 0 8px var(--green-glow); }
+  .fs-dot.off { background:var(--text3); }
+  .fs-dot.warn { background:var(--yellow); }
+  .fs-name { font-size:14px; font-weight:700; color:var(--text); }
+  .fs-sub  { font-size:11px; color:var(--text3); margin-top:2px; }
+  .fs-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .fs-btn {
+    padding:9px 16px; border-radius:10px; font-size:13px; font-weight:700;
+    font-family:var(--sans); cursor:pointer; transition:all 0.2s; border:1px solid;
+  }
+  .fs-btn.primary { background:var(--green); color:#000; border-color:var(--green); }
+  .fs-btn.primary:hover { filter:brightness(1.1); }
+  .fs-btn.ghost   { background:transparent; color:var(--text2); border-color:var(--border2); }
+  .fs-btn.ghost:hover { color:var(--text); border-color:var(--text3); }
+  .fs-btn.danger  { background:transparent; color:var(--red); border-color:rgba(255,77,106,0.3); }
+  .fs-hint {
+    margin: 0 20px 16px; font-size:11px; color:var(--text3); line-height:1.6;
+    padding:10px 14px; background:var(--bg3); border-radius:10px;
+  }
+
+  /* ── DANGER ZONE ── */
+  .danger-block { margin:0 20px 16px; }
+  .danger-btn {
+    width:100%; padding:13px; background:var(--red-dim); border:1px solid rgba(255,77,106,0.25);
+    border-radius:12px; color:var(--red); font-size:14px; font-weight:700;
+    font-family:var(--sans); cursor:pointer; transition:all 0.2s; margin-bottom:8px;
+  }
+  .danger-btn:hover { border-color:rgba(255,77,106,0.5); }
+  .danger-btn:active { transform:scale(0.98); }
+
+  /* ── SAVE NOTICE ── */
+  .save-notice {
+    position:fixed; bottom:calc(var(--nav-h) + 12px); left:50%; transform:translateX(-50%);
+    background:var(--green); color:#000; padding:10px 20px; border-radius:99px;
+    font-size:13px; font-weight:700; z-index:50;
+    opacity:0; transition:opacity 0.3s; pointer-events:none;
+  }
+  .save-notice.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <div class="page-header s1">
+    <a class="page-back" href="index.html">←</a>
+    <div class="page-title">Настройки</div>
+  </div>
+
+  <!-- FILE STORAGE -->
+  <div class="section-title s1">Хранилище данных</div>
+  <div id="fsCard" class="fs-card s1">
+    <div class="fs-status">
+      <div class="fs-dot off" id="fsDot"></div>
+      <div>
+        <div class="fs-name" id="fsName">Только браузер (localStorage)</div>
+        <div class="fs-sub"  id="fsSub">Данные хранятся в браузере и могут быть потеряны</div>
+      </div>
+    </div>
+    <div class="fs-actions" id="fsActions"></div>
+  </div>
+  <div class="fs-hint" id="fsHint">
+    💡 Подключи папку на диске — расходы будут сохраняться в <strong>JSONL-файлах</strong> (один файл = один месяц).
+    Данные останутся при очистке браузера, их легко скопировать и открыть в любом редакторе.
+  </div>
+
+  <!-- INCOME -->
+  <div class="section-title s1">Доход</div>
+  <div class="income-row s1">
+    <div>
+      <div class="income-label">Ежемесячный доход</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Сохраняется автоматически</div>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:6px">
+      <input class="income-input" id="incomeInput" type="number" inputmode="numeric"
+             placeholder="295000" onblur="saveField('income')" onkeydown="if(event.key==='Enter')blur()">
+      <span style="font-size:14px;color:var(--text3)">₽</span>
+    </div>
+  </div>
+
+  <!-- VARIABLE BUDGETS -->
+  <div class="section-title s2">Переменные расходы</div>
+  <div class="settings-block s2">
+    <div class="card" id="catBudgets"></div>
+  </div>
+  <div class="total-row s2" id="varTotalRow">
+    <span class="total-label">Итого переменные</span>
+    <span class="total-val" id="varTotal">—</span>
+  </div>
+  <div class="total-warn-text" id="varWarnText" style="display:none"></div>
+
+  <!-- FIXED EXPENSES -->
+  <div class="section-title s3">Фиксированные расходы</div>
+  <div class="settings-block s3">
+    <div class="card" id="fixedList"></div>
+  </div>
+  <div class="total-row s3" style="background:var(--bg3);border-color:var(--border)">
+    <span class="total-label">Итого фиксированные</span>
+    <span class="total-val" id="fixedTotal" style="color:var(--text2)">—</span>
+  </div>
+
+  <!-- BALANCE SUMMARY -->
+  <div class="section-title s4">Баланс</div>
+  <div class="settings-block s4">
+    <div class="card">
+      <div class="settings-row" id="balanceRow">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Свободные деньги</div>
+          <div class="settings-row-sub">доход − фикс. − перем.</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:16px;font-weight:800" id="freeMoneyVal">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DANGER ZONE -->
+  <div class="section-title s5" style="color:var(--red)">Опасная зона</div>
+  <div class="danger-block s5">
+    <button class="danger-btn" onclick="clearThisMonth()">🗑 Очистить расходы этого месяца</button>
+    <button class="danger-btn" onclick="resetAll()">⚠️ Сбросить всё</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a class="nav-item" href="index.html">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a class="nav-item" href="history.html">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">История</span>
+    </a>
+    <a class="nav-add" href="add.html">＋</a>
+    <a class="nav-item" href="charts.html">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Детализация</span>
+    </a>
+    <a class="nav-item active" href="settings.html">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Настройки</span>
+    </a>
+  </div>
+</nav>
+
+<div class="save-notice" id="saveNotice">✓ Сохранено</div>
+
+<script src="js/app.js"></script>
+<script>
+async function init() {
+  await loadBudgetConfig();
+  await initStorage();
+  renderAll();
+  renderFileStorage();
+}
+
+function renderAll() {
+  const config = getBudgetConfig();
+  if (!config) return;
+  renderIncome(config);
+  renderCatBudgets(config);
+  renderFixed(config);
+  updateTotals(config);
+}
+
+// ── INCOME ────────────────────────────────────────────────────────
+
+function renderIncome(config) {
+  document.getElementById('incomeInput').value = config.monthly_income;
+}
+
+// ── CATEGORY BUDGETS ──────────────────────────────────────────────
+
+function renderCatBudgets(config) {
+  const cont = document.getElementById('catBudgets');
+  cont.innerHTML = config.categories.map((cat, i) => `
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label">
+          <span>${cat.emoji}</span> ${cat.name}
+        </div>
+        ${cat.notes ? `<div class="settings-row-sub">${cat.notes}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input class="budget-input" data-cat="${cat.id}" type="number" inputmode="numeric"
+               value="${cat.budget}" onblur="saveCatBudget('${cat.id}', this)"
+               onkeydown="if(event.key==='Enter')blur()">
+        <span class="budget-rub">₽</span>
+      </div>
+    </div>`).join('');
+}
+
+function saveCatBudget(id, input) {
+  const val = parseInt(input.value, 10);
+  if (!val || val < 0) { input.value = getBudgetConfig().categories.find(c => c.id === id)?.budget || 0; return; }
+  const config = getBudgetConfig();
+  const cat    = config.categories.find(c => c.id === id);
+  if (cat) cat.budget = val;
+  recalcVariableTotal(config);
+  saveBudgetConfig(config);
+  updateTotals(config);
+  showSaveNotice();
+}
+
+function recalcVariableTotal(config) {
+  config.budget_summary.total_variable_budget = config.categories.reduce((s,c) => s+c.budget, 0);
+}
+
+// ── FIXED ─────────────────────────────────────────────────────────
+
+function renderFixed(config) {
+  const cont = document.getElementById('fixedList');
+  cont.innerHTML = config.fixed_expenses.map((f, i) => `
+    <div class="settings-row" style="gap:8px">
+      <input class="fixed-emoji-input" value="${f.emoji}" data-fi="${i}" data-field="emoji"
+             onblur="saveFixed()" title="Эмодзи">
+      <input class="fixed-name-input" value="${f.name}" data-fi="${i}" data-field="name"
+             onblur="saveFixed()" placeholder="Название">
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <input class="fixed-input" type="number" value="${f.amount}" data-fi="${i}" data-field="amount"
+               onblur="saveFixed()" onkeydown="if(event.key==='Enter')blur()" inputmode="numeric" placeholder="0">
+        <span class="budget-rub">₽</span>
+      </div>
+      <button class="fixed-del" onclick="removeFixed(${i})" title="Удалить">✕</button>
+    </div>`).join('') +
+    `<div class="add-btn-row" onclick="addFixed()">+ Добавить статью</div>`;
+  document.getElementById('fixedTotal').textContent =
+    fmtRub(config.fixed_expenses.reduce((s, f) => s + f.amount, 0));
+}
+
+function saveFixed() {
+  const config = getBudgetConfig();
+  document.querySelectorAll('[data-fi]').forEach(el => {
+    const i     = parseInt(el.dataset.fi);
+    const field = el.dataset.field;
+    if (!config.fixed_expenses[i]) return;
+    config.fixed_expenses[i][field] = field === 'amount' ? (parseInt(el.value) || 0) : el.value;
+  });
+  saveBudgetConfig(config);
+  updateTotals(config);
+  showSaveNotice();
+}
+
+function addFixed() {
+  const config = getBudgetConfig();
+  config.fixed_expenses.push({ name: '', emoji: '📌', amount: 0 });
+  saveBudgetConfig(config);
+  renderFixed(config);
+  updateTotals(config);
+  // Focus new row name input
+  const inputs = document.querySelectorAll('.fixed-name-input');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function removeFixed(idx) {
+  const config = getBudgetConfig();
+  config.fixed_expenses.splice(idx, 1);
+  saveBudgetConfig(config);
+  renderFixed(config);
+  updateTotals(config);
+  showSaveNotice();
+}
+
+// ── TOTALS & BALANCE ──────────────────────────────────────────────
+
+function updateTotals(config) {
+  const varTotal   = config.categories.reduce((s,c) => s+c.budget, 0);
+  const fixedTotal = config.fixed_expenses.reduce((s,f) => s+f.amount, 0);
+  const freeMoney  = config.monthly_income - fixedTotal - varTotal;
+
+  document.getElementById('varTotal').textContent   = fmtRub(varTotal);
+  document.getElementById('fixedTotal').textContent = fmtRub(fixedTotal);
+
+  const freeEl  = document.getElementById('freeMoneyVal');
+  const warnTxt = document.getElementById('varWarnText');
+  const totalRow = document.getElementById('varTotalRow');
+
+  freeEl.textContent = fmtRub(freeMoney);
+  freeEl.style.color = freeMoney < 0 ? 'var(--red)' : freeMoney < 10000 ? 'var(--yellow)' : 'var(--green)';
+
+  if (freeMoney < 0) {
+    totalRow.classList.add('warn');
+    warnTxt.style.display = 'block';
+    warnTxt.textContent = `⚠️ Сумма категорий превышает доступный бюджет на ${fmtRub(Math.abs(freeMoney))}`;
+  } else {
+    totalRow.classList.remove('warn');
+    warnTxt.style.display = 'none';
+  }
+}
+
+// ── FILE STORAGE UI ───────────────────────────────────────────────
+
+function renderFileStorage() {
+  const card    = document.getElementById('fsCard');
+  const dot     = document.getElementById('fsDot');
+  const name    = document.getElementById('fsName');
+  const sub     = document.getElementById('fsSub');
+  const actions = document.getElementById('fsActions');
+  const hint    = document.getElementById('fsHint');
+
+  if (serverStore.available) {
+    card.className = 'fs-card s1 connected';
+    dot.className  = 'fs-dot on';
+    name.textContent = '📁 ./data/ (рядом с приложением)';
+    sub.textContent  = `Файлы: ${location.origin}/data/ · JSONL, один файл = один месяц`;
+    hint.style.display = 'none';
+    actions.innerHTML = `
+      <button class="fs-btn ghost" onclick="doMigrate()">⬆ Перенести из браузера</button>`;
+    return;
+  }
+
+  if (fileStore.isConnected) {
+    card.className = 'fs-card s1 connected';
+    dot.className  = 'fs-dot on';
+    name.textContent = `📁 ${fileStore.folderName}`;
+    sub.textContent  = 'Расходы хранятся в файлах на диске';
+    hint.style.display = 'none';
+    actions.innerHTML = `
+      <button class="fs-btn ghost" onclick="doMigrate()">⬆ Перенести из браузера</button>
+      <button class="fs-btn danger" onclick="doDisconnect()">Отключить</button>`;
+  } else if (fileStore.hasPending) {
+    card.className = 'fs-card s1 pending';
+    dot.className  = 'fs-dot warn';
+    name.textContent = 'Требуется разрешение';
+    sub.textContent  = 'Нажми кнопку, чтобы подтвердить доступ к папке';
+    actions.innerHTML = `
+      <button class="fs-btn primary" onclick="doRequestPerm()">🔓 Разрешить доступ</button>
+      <button class="fs-btn ghost" onclick="doSelectFolder()">Выбрать другую папку</button>`;
+  } else {
+    card.className = 'fs-card s1';
+    dot.className  = 'fs-dot off';
+    name.textContent = 'Только браузер (localStorage)';
+    sub.textContent  = 'Запусти node server.js для хранения в файлах';
+    actions.innerHTML = `
+      <button class="fs-btn ghost" onclick="doSelectFolder()">📁 Выбрать папку вручную</button>`;
+  }
+}
+
+async function doSelectFolder() {
+  const ok = await fileStore.selectFolder();
+  if (!ok) return;
+  // Загружаем данные из папки в память
+  const loaded = await fileStore.loadAll();
+  if (loaded.length > 0) {
+    _expenses = loaded;
+    showSaveNotice('📁 Папка подключена, данные загружены');
+  } else {
+    _expenses = [];
+    // Автоматически переносим из localStorage если есть данные
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw && JSON.parse(raw)?.length > 0) {
+      const count = await fileStore.migrateFromLocalStorage();
+      _expenses = await fileStore.loadAll();
+      if (count > 0) showSaveNotice(`✅ Перенесено ${count} записей в файлы`);
+    } else {
+      showSaveNotice('📁 Папка подключена');
+    }
+  }
+  renderFileStorage();
+}
+
+async function doRequestPerm() {
+  const ok = await fileStore.requestPendingPermission();
+  if (ok) {
+    _expenses = await fileStore.loadAll();
+    showSaveNotice('📁 Доступ восстановлен');
+  } else {
+    showSaveNotice('Доступ отклонён');
+  }
+  renderFileStorage();
+}
+
+async function doMigrate() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw || !JSON.parse(raw)?.length) {
+    showSaveNotice('Нечего переносить — браузер пуст');
+    return;
+  }
+  const count = await fileStore.migrateFromLocalStorage();
+  _expenses = await fileStore.loadAll();
+  showSaveNotice(count > 0 ? `✅ Перенесено ${count} записей` : 'Все данные уже в файлах');
+  renderFileStorage();
+}
+
+async function doDisconnect() {
+  if (!confirm('Отключить хранилище? Данные в файлах останутся нетронутыми.')) return;
+  await fileStore.disconnect();
+  _expenses = null;
+  renderFileStorage();
+  showSaveNotice('Хранилище отключено');
+}
+
+// ── INCOME SAVE ───────────────────────────────────────────────────
+
+function saveField(field) {
+  const config = getBudgetConfig();
+  if (field === 'income') {
+    const val = parseInt(document.getElementById('incomeInput').value, 10);
+    if (val > 0) {
+      const allZero = config.categories.every(c => !c.budget);
+      config.monthly_income = val;
+      if (allZero) {
+        distributeBudget(config, val);
+      }
+      saveBudgetConfig(config);
+      renderCatBudgets(config);
+      updateTotals(config);
+      showSaveNotice();
+    }
+  }
+}
+
+// ── DANGER ZONE ───────────────────────────────────────────────────
+
+function clearThisMonth() {
+  const prefix = getMonthPrefix();
+  if (!confirm(`Удалить все расходы за ${prefix}? Это нельзя отменить.`)) return;
+  const remaining = loadExpenses().filter(e => !e.date.startsWith(prefix));
+  saveExpenses(remaining);
+  showSaveNotice();
+  alert('Расходы этого месяца удалены.');
+}
+
+function resetAll() {
+  if (!confirm('Удалить ВСЕ расходы и настройки? Это нельзя отменить.')) return;
+  if (!confirm('Вы уверены? Все данные будут потеряны навсегда.')) return;
+  saveExpenses([]);
+  localStorage.removeItem('ft_expenses');
+  localStorage.removeItem('ft_budget_config');
+  fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(DEFAULT_CONFIG),
+  }).catch(() => {});
+  alert('Все данные сброшены.');
+  window.location.href = 'index.html';
+}
+
+// ── NOTICE ────────────────────────────────────────────────────────
+
+let noticeTimer = null;
+function showSaveNotice() {
+  const n = document.getElementById('saveNotice');
+  n.classList.add('show');
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => n.classList.remove('show'), 2000);
+}
+
+init();
+</script>
+</body>
+</html>

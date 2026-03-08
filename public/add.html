@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080810">
+<title>Добавить расход</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  /* ── AMOUNT ── */
+  .amount-section { padding:24px 20px 0; text-align:center; }
+  .amount-wrap { display:inline-flex; align-items:baseline; gap:6px; }
+  .amount-input {
+    font-family:var(--mono); font-size:52px; font-weight:700;
+    letter-spacing:-0.03em; background:transparent; border:none; outline:none;
+    color:var(--text); width:220px; text-align:center;
+    caret-color: var(--green);
+  }
+  .amount-input::placeholder { color:var(--text3); }
+  .amount-currency { font-family:var(--mono); font-size:28px; color:var(--text3); }
+  .amount-hint { font-size:12px; color:var(--text3); margin-top:8px; min-height:18px; }
+
+  /* ── CATEGORY ── */
+  .cats-scroll {
+    display:flex; gap:8px; overflow-x:auto; padding:0 20px 4px;
+    margin-bottom:0; scrollbar-width:none;
+  }
+  .cats-scroll::-webkit-scrollbar { display:none; }
+  .cat-pill {
+    flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:10px 12px; border-radius:14px; min-width:62px;
+    background:var(--bg3); border:1px solid var(--border);
+    cursor:pointer; transition:all 0.15s; position:relative;
+  }
+  .cat-pill:hover { border-color:var(--border2); }
+  .cat-pill.selected { background:var(--green-dim); border-color:rgba(0,232,122,0.4); }
+  .cat-pill.limit-reached { border-color:rgba(255,77,106,0.3); }
+  .cat-pill-emoji { font-size:20px; }
+  .cat-pill-name  { font-size:9px; font-weight:700; color:var(--text2); text-align:center; white-space:nowrap; letter-spacing:0.02em; }
+  .cat-pill.selected .cat-pill-name { color:var(--green); }
+  .cat-limit-badge {
+    position:absolute; top:-4px; right:-4px;
+    background:var(--red); color:#fff; font-size:7px; font-weight:800;
+    padding:2px 5px; border-radius:99px; letter-spacing:0.06em;
+  }
+
+  .cat-hint {
+    margin:10px 20px 0; background:var(--bg3); border-radius:12px;
+    padding:10px 14px; font-size:12px; color:var(--text2);
+    display:flex; justify-content:space-between; align-items:center;
+    border:1px solid var(--border); min-height:40px;
+  }
+  .cat-hint-remain { font-family:var(--mono); font-weight:700; color:var(--green); }
+  .cat-hint-remain.low  { color:var(--yellow); }
+  .cat-hint-remain.over { color:var(--red); }
+
+  /* ── DESC ── */
+  .desc-wrap { padding:14px 20px 0; }
+  .desc-input {
+    width:100%; background:var(--bg3); border:1px solid var(--border);
+    border-radius:12px; padding:12px 14px; font-size:14px;
+    font-family:var(--sans); color:var(--text); outline:none;
+    transition:border-color 0.2s; resize:none; line-height:1.5;
+  }
+  .desc-input:focus { border-color:var(--border2); }
+  .desc-input::placeholder { color:var(--text3); }
+
+  /* ── REGRET ── */
+  .regret-wrap { padding:14px 20px 0; }
+  .regret-label { font-size:12px; font-weight:600; color:var(--text2); margin-bottom:10px; }
+  .regret-row { display:flex; gap:6px; }
+  .regret-btn {
+    flex:1; padding:9px 4px; border-radius:10px; border:1px solid var(--border);
+    background:var(--bg3); cursor:pointer; transition:all 0.15s;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+  }
+  .regret-num   { font-family:var(--mono); font-size:14px; font-weight:700; }
+  .regret-name  { font-size:8px; font-weight:700; text-align:center; line-height:1.2; letter-spacing:0.02em; color:var(--text3); }
+  .regret-btn.sel { border-color:rgba(255,255,255,0.2); }
+  .regret-btn[data-s="0"].sel { background:rgba(0,232,122,0.14);  border-color:var(--green); }
+  .regret-btn[data-s="1"].sel { background:rgba(0,200,100,0.11);  border-color:#00c864; }
+  .regret-btn[data-s="2"].sel { background:rgba(245,200,66,0.11); border-color:var(--yellow); }
+  .regret-btn[data-s="3"].sel { background:rgba(255,160,50,0.11); border-color:#ffa032; }
+  .regret-btn[data-s="4"].sel { background:rgba(255,100,60,0.11); border-color:#ff643c; }
+  .regret-btn[data-s="5"].sel { background:rgba(255,60,80,0.14);  border-color:var(--red); }
+
+  .regret-warning {
+    margin:10px 20px 0; background:var(--yellow-dim);
+    border:1px solid rgba(245,200,66,0.25); border-radius:10px;
+    padding:10px 14px; font-size:12px; color:var(--yellow); font-weight:500;
+    display:none;
+  }
+  .regret-warning.show { display:block; }
+
+  /* ── DATE ── */
+  .date-wrap { padding:14px 20px 0; }
+  .date-label { font-size:12px; font-weight:600; color:var(--text2); margin-bottom:10px; }
+  .date-row { display:flex; gap:8px; align-items:center; }
+  .date-btn {
+    padding:8px 14px; border-radius:10px; border:1px solid var(--border);
+    background:var(--bg3); color:var(--text2); font-size:12px; font-weight:600;
+    font-family:var(--sans); cursor:pointer; transition:all 0.15s;
+  }
+  .date-btn.sel { background:var(--green-dim); border-color:rgba(0,232,122,0.4); color:var(--green); }
+  .date-btn:hover { border-color:var(--border2); }
+  .date-picker {
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px;
+    padding:8px 10px; font-size:12px; font-family:var(--mono);
+    color:var(--text); outline:none; flex:1;
+    transition:border-color 0.2s; min-width:0;
+    color-scheme: dark;
+  }
+  .date-picker:focus { border-color:var(--border2); }
+
+  /* ── SAVE ── */
+  .save-wrap { padding:20px 20px 0; }
+  .add-more-btn {
+    width:100%; padding:12px; background:transparent; color:var(--text2);
+    border:1px solid var(--border); border-radius:14px; font-size:14px;
+    font-weight:600; font-family:var(--sans); cursor:pointer;
+    transition:all 0.2s; margin-top:10px;
+  }
+  .add-more-btn:hover { border-color:var(--border2); color:var(--text); }
+  .add-more-btn:active { transform:scale(0.98); }
+</style>
+</head>
+<body>
+<div class="success-flash" id="flash"></div>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="page-header s1">
+    <a class="page-back" href="index.html">←</a>
+    <div class="page-title">Новый расход</div>
+  </div>
+
+  <!-- AMOUNT -->
+  <div class="amount-section s1">
+    <div class="amount-wrap">
+      <input class="amount-input" id="amountInput" type="number" inputmode="numeric"
+             placeholder="0" min="0" autofocus>
+      <span class="amount-currency">₽</span>
+    </div>
+    <div class="amount-hint" id="amountHint">&nbsp;</div>
+  </div>
+
+  <!-- CATEGORY -->
+  <div class="section-title s2">Категория</div>
+  <div class="cats-scroll" id="catPicker"></div>
+  <div class="cat-hint" id="catHint">
+    <span>Выбери категорию</span>
+    <span class="cat-hint-remain">—&nbsp;₽</span>
+  </div>
+
+  <!-- DESCRIPTION -->
+  <div class="desc-wrap s3">
+    <textarea class="desc-input" id="descInput"
+              placeholder="На что потратил? (Boltay, кофе и круассан)" rows="2"></textarea>
+  </div>
+
+  <!-- REGRET SCORE -->
+  <div class="regret-wrap s3">
+    <div class="regret-label">Насколько эта покупка была нужна?</div>
+    <div class="regret-row" id="regretRow"></div>
+    <div class="regret-warning" id="regretWarning">🤔 Точно нужно? Подожди 24 часа перед дорогими покупками</div>
+  </div>
+
+  <!-- DATE -->
+  <div class="date-wrap s4">
+    <div class="date-label">Дата</div>
+    <div class="date-row">
+      <button class="date-btn sel" id="btnToday" onclick="setDate('today')">Сегодня</button>
+      <button class="date-btn"    id="btnYest"  onclick="setDate('yesterday')">Вчера</button>
+      <input  class="date-picker" id="datePicker" type="date" onchange="setDate('custom')">
+    </div>
+  </div>
+
+  <!-- SAVE -->
+  <div class="save-wrap s5">
+    <button class="btn-primary" onclick="doSave(false)">Сохранить</button>
+    <button class="add-more-btn" onclick="doSave(true)">Добавить ещё</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a class="nav-item" href="index.html">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a class="nav-item" href="history.html">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">История</span>
+    </a>
+    <a class="nav-add active" href="add.html" style="background:var(--bg3);border:2px solid var(--green);color:var(--green);">＋</a>
+    <a class="nav-item" href="charts.html">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Детализация</span>
+    </a>
+    <a class="nav-item" href="settings.html">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Настройки</span>
+    </a>
+  </div>
+</nav>
+
+<script src="js/app.js"></script>
+<script>
+const REGRET_LABELS = [
+  { s:0, label:'Необходимо', color:'#00e87a' },
+  { s:1, label:'Нужно',      color:'#00c864' },
+  { s:2, label:'Окей',       color:'#f5c842' },
+  { s:3, label:'Сомнение',   color:'#ffa032' },
+  { s:4, label:'Лишнее',     color:'#ff643c' },
+  { s:5, label:'Зря',        color:'#ff4d6a' },
+];
+
+let selectedCat    = null;
+let selectedRegret = 0;
+let selectedDate   = getToday();
+
+async function init() {
+  await loadBudgetConfig();
+  await initStorage();
+  buildCatPicker();
+  buildRegretRow();
+  setDateDefaults();
+
+  const amtInput = document.getElementById('amountInput');
+  amtInput.focus();
+
+  // Large amount → focus description
+  amtInput.addEventListener('blur', () => {
+    const v = parseFloat(amtInput.value);
+    if (v >= 5000) {
+      document.getElementById('descInput').focus();
+    }
+    updateAmountHint(v);
+  });
+  amtInput.addEventListener('input', () => {
+    const v = parseFloat(amtInput.value);
+    updateAmountHint(v);
+  });
+}
+
+function updateAmountHint(v) {
+  const hint = document.getElementById('amountHint');
+  if (!v || v <= 0) { hint.textContent = '\u00a0'; return; }
+  if (v >= 5000) hint.textContent = `💡 Сумма > 5 000 ₽ — добавь описание`;
+  else if (v >= 1000) hint.textContent = v.toLocaleString('ru') + '\u00a0₽';
+  else hint.textContent = '\u00a0';
+}
+
+// ── CATEGORY ──────────────────────────────────────────────────────
+
+function buildCatPicker() {
+  const config     = getBudgetConfig();
+  if (!config) return;
+  const monthExp   = getMonthExpenses();
+  const picker     = document.getElementById('catPicker');
+  picker.innerHTML = config.categories.map(cat => {
+    const spent = monthExp.filter(e => e.category_id === cat.id).reduce((s,e) => s+e.amount, 0);
+    const over  = spent >= cat.budget;
+    const badge = over ? `<span class="cat-limit-badge">ЛИМИТ</span>` : '';
+    return `
+      <div class="cat-pill ${over ? 'limit-reached' : ''}" data-id="${cat.id}" onclick="selectCat('${cat.id}')">
+        ${badge}
+        <span class="cat-pill-emoji">${cat.emoji}</span>
+        <span class="cat-pill-name">${cat.name.split(' ')[0]}</span>
+      </div>`;
+  }).join('');
+}
+
+function selectCat(id) {
+  selectedCat = id;
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('selected'));
+  document.querySelector(`.cat-pill[data-id="${id}"]`)?.classList.add('selected');
+  updateCatHint();
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+
+function updateCatHint() {
+  const config = getBudgetConfig();
+  const hint   = document.getElementById('catHint');
+  if (!selectedCat || !config) {
+    hint.innerHTML = '<span>Выбери категорию</span><span class="cat-hint-remain">—\u00a0₽</span>';
+    return;
+  }
+  const cat     = config.categories.find(c => c.id === selectedCat);
+  const spent   = getMonthExpenses().filter(e => e.category_id === selectedCat).reduce((s,e) => s+e.amount, 0);
+  const remain  = cat.budget - spent;
+  const cls     = remain < 0 ? 'over' : remain < cat.budget * 0.2 ? 'low' : '';
+  const txt     = remain < 0
+    ? `ПРЕВЫШЕНО на ${fmtRub(Math.abs(remain))}`
+    : `${fmtRub(remain)} осталось`;
+  hint.innerHTML = `<span>${cat.emoji} ${cat.name}</span><span class="cat-hint-remain ${cls}">${txt}</span>`;
+}
+
+// ── REGRET ────────────────────────────────────────────────────────
+
+function buildRegretRow() {
+  const row = document.getElementById('regretRow');
+  row.innerHTML = REGRET_LABELS.map(r => `
+    <button class="regret-btn ${r.s === 0 ? 'sel' : ''}" data-s="${r.s}" onclick="selectRegret(${r.s})">
+      <span class="regret-num" style="color:${r.color}">${r.s}</span>
+      <span class="regret-name">${r.label}</span>
+    </button>`).join('');
+}
+
+function selectRegret(score) {
+  selectedRegret = score;
+  document.querySelectorAll('.regret-btn').forEach(b => b.classList.remove('sel'));
+  document.querySelector(`.regret-btn[data-s="${score}"]`)?.classList.add('sel');
+  document.getElementById('regretWarning').classList.toggle('show', score >= 4);
+  if (navigator.vibrate) navigator.vibrate(6);
+}
+
+// ── DATE ──────────────────────────────────────────────────────────
+
+function setDateDefaults() {
+  const today = getToday();
+  document.getElementById('datePicker').value = today;
+  selectedDate = today;
+}
+
+function setDate(mode) {
+  const today = new Date();
+  const picker = document.getElementById('datePicker');
+
+  document.getElementById('btnToday').classList.remove('sel');
+  document.getElementById('btnYest').classList.remove('sel');
+
+  if (mode === 'today') {
+    selectedDate = getToday();
+    picker.value = selectedDate;
+    document.getElementById('btnToday').classList.add('sel');
+  } else if (mode === 'yesterday') {
+    const yest   = new Date(today);
+    yest.setDate(yest.getDate() - 1);
+    selectedDate = yest.toISOString().split('T')[0];
+    picker.value = selectedDate;
+    document.getElementById('btnYest').classList.add('sel');
+  } else {
+    selectedDate = picker.value || getToday();
+  }
+}
+
+// ── SAVE ──────────────────────────────────────────────────────────
+
+function doSave(addMore) {
+  const amount = parseFloat(document.getElementById('amountInput').value);
+
+  if (!amount || amount <= 0) {
+    const inp = document.getElementById('amountInput');
+    inp.style.boxShadow = '0 0 0 2px var(--red)';
+    setTimeout(() => inp.style.boxShadow = '', 1000);
+    inp.focus();
+    return;
+  }
+  if (!selectedCat) {
+    const picker = document.getElementById('catPicker');
+    picker.style.outline = '2px solid var(--red)';
+    picker.style.borderRadius = '12px';
+    setTimeout(() => picker.style.outline = '', 1000);
+    picker.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    return;
+  }
+
+  const expense = {
+    id:           Date.now(),
+    date:         selectedDate || getToday(),
+    amount,
+    category_id:  selectedCat,
+    description:  document.getElementById('descInput').value.trim(),
+    regret_score: selectedRegret,
+    created_at:   new Date().toISOString(),
+  };
+  saveExpense(expense);
+
+  // Flash
+  const flash = document.getElementById('flash');
+  flash.classList.add('fire');
+  if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
+  setTimeout(() => flash.classList.remove('fire'), 220);
+
+  if (addMore) {
+    // Reset form
+    setTimeout(() => {
+      document.getElementById('amountInput').value = '';
+      document.getElementById('descInput').value   = '';
+      document.getElementById('amountHint').textContent = '\u00a0';
+      selectedCat    = null;
+      selectedRegret = 0;
+      setDateDefaults();
+      buildCatPicker();
+      buildRegretRow();
+      updateCatHint();
+      document.getElementById('amountInput').focus();
+    }, 220);
+  } else {
+    setTimeout(() => { window.location.href = 'index.html'; }, 280);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

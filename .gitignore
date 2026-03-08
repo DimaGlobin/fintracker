@@ -1,0 +1,18 @@
+# Данные пользователя — не коммитим
+data/
+
+# Экспорты
+*.csv
+*.txt
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Редакторы
+.vscode/
+.idea/
+*.swp

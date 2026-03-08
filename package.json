@@ -1,0 +1,13 @@
+{
+  "name": "fintracker",
+  "version": "1.0.0",
+  "description": "Персональный финансовый трекер",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js 3000"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

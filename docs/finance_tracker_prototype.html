@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💸 Финансы</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080810;
+    --bg2: #0f0f1a;
+    --bg3: #16162a;
+    --card: #12121f;
+    --card2: #1a1a2e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --green: #00e87a;
+    --green-dim: rgba(0,232,122,0.12);
+    --green-glow: rgba(0,232,122,0.25);
+    --yellow: #f5c842;
+    --yellow-dim: rgba(245,200,66,0.12);
+    --red: #ff4d6a;
+    --red-dim: rgba(255,77,106,0.12);
+    --blue: #4d9fff;
+    --blue-dim: rgba(77,159,255,0.12);
+    --text: #e8e8f0;
+    --text2: #888899;
+    --text3: #55556a;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Manrope', sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size:16px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE TEXTURE ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.6;
+  }
+
+  /* ── LAYOUT ── */
+  .app { max-width: 480px; margin: 0 auto; padding: 0 0 90px; position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 28px 20px 20px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; }
+  .month-label { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3); font-weight: 600; }
+  .add-btn {
+    background: var(--green); color: #000; border: none; border-radius: 50px;
+    padding: 8px 18px; font-size: 13px; font-weight: 700; font-family: var(--sans);
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 0 20px var(--green-glow); transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .add-btn:hover { transform: scale(1.04); box-shadow: 0 0 30px var(--green-glow); }
+  .add-btn:active { transform: scale(0.97); }
+
+  .today-spent {
+    padding: 20px 20px 0;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .today-amount {
+    font-family: var(--mono); font-size: 52px; font-weight: 700;
+    letter-spacing: -0.03em; color: var(--text);
+    line-height: 1;
+  }
+  .today-meta { display: flex; flex-direction: column; gap: 2px; padding-bottom: 4px; }
+  .today-label { font-size: 11px; color: var(--text3); font-weight: 500; }
+  .today-norm { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+
+  /* ── MONTH PROGRESS ── */
+  .month-bar-section { padding: 20px 20px 0; }
+  .month-bar-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+  }
+  .month-bar-label { font-size: 12px; color: var(--text2); font-weight: 500; }
+  .month-bar-amounts { font-family: var(--mono); font-size: 13px; }
+  .month-bar-amounts .spent { color: var(--text); font-weight: 700; }
+  .month-bar-amounts .total { color: var(--text3); }
+  .progress-track {
+    height: 6px; background: var(--bg3); border-radius: 99px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--green), #00c96a);
+    transition: width 1s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 0 10px var(--green-glow);
+  }
+  .progress-fill.warn { background: linear-gradient(90deg, var(--yellow), #e6aa00); box-shadow: 0 0 10px rgba(245,200,66,0.3); }
+  .progress-fill.over { background: linear-gradient(90deg, var(--red), #e0003a); box-shadow: 0 0 10px rgba(255,77,106,0.3); }
+  .day-progress { margin-top: 8px; font-size: 11px; color: var(--text3); }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    padding: 24px 20px 12px;
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text3); font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── INSIGHT CARD ── */
+  .insight {
+    margin: 0 20px;
+    background: var(--green-dim);
+    border: 1px solid rgba(0,232,122,0.2);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .insight.warn { background: var(--yellow-dim); border-color: rgba(245,200,66,0.2); }
+  .insight.danger { background: var(--red-dim); border-color: rgba(255,77,106,0.2); }
+  .insight-icon { font-size: 18px; line-height: 1.3; }
+  .insight-text { font-size: 13px; color: var(--text); line-height: 1.5; font-weight: 500; }
+  .insight-text strong { color: var(--green); }
+  .insight.warn .insight-text strong { color: var(--yellow); }
+  .insight.danger .insight-text strong { color: var(--red); }
+
+  /* ── CATEGORY CARDS ── */
+  .cats-grid {
+    padding: 0 20px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .cat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    cursor: pointer; transition: all 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .cat-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--card-accent, transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .cat-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .cat-card.over { border-color: rgba(255,77,106,0.35); background: rgba(255,77,106,0.06); }
+  .cat-card.warn { border-color: rgba(245,200,66,0.3); background: rgba(245,200,66,0.05); }
+  .cat-card.ok { }
+  .cat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .cat-emoji { font-size: 22px; line-height: 1; }
+  .cat-badge {
+    font-size: 9px; font-weight: 800; letter-spacing: 0.1em;
+    padding: 3px 7px; border-radius: 99px; font-family: var(--sans);
+  }
+  .cat-badge.over { background: var(--red-dim); color: var(--red); }
+  .cat-badge.warn { background: var(--yellow-dim); color: var(--yellow); }
+  .cat-badge.ok { background: var(--green-dim); color: var(--green); }
+  .cat-name { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+  .cat-amounts {
+    font-family: var(--mono); margin-bottom: 8px;
+    display: flex; align-items: baseline; gap: 4px;
+  }
+  .cat-spent { font-size: 16px; font-weight: 700; color: var(--text); }
+  .cat-budget-total { font-size: 11px; color: var(--text3); }
+  .cat-remaining { font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+  .cat-bar { height: 4px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 99px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+
+  /* ── RECENT EXPENSES ── */
+  .expenses-list { padding: 0 20px; display: flex; flex-direction: column; gap: 6px; }
+  .expense-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px;
+    animation: fadeIn 0.3s ease both;
+  }
+  .expense-row:hover { border-color: var(--border2); }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .expense-emoji { font-size: 20px; width: 32px; text-align: center; flex-shrink: 0; }
+  .expense-info { flex: 1; min-width: 0; }
+  .expense-desc {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .expense-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .expense-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+  .expense-amount { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--text); }
+  .regret-dots { display: flex; gap: 2px; }
+  .regret-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--border2);
+  }
+  .regret-dot.filled { background: var(--red); }
+  .regret-dot.filled.mild { background: var(--yellow); }
+
+  /* ── ADD PANEL (MODAL STYLE) ── */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+    z-index: 100; align-items: flex-end;
+  }
+  .overlay.active { display: flex; }
+  .add-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 28px 28px 0 0;
+    padding: 24px 20px 40px;
+    width: 100%; max-width: 480px; margin: 0 auto;
+    animation: slideUp 0.35s cubic-bezier(.4,0,.2,1);
+    max-height: 90vh; overflow-y: auto;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .panel-handle {
+    width: 36px; height: 4px; background: var(--border2);
+    border-radius: 99px; margin: 0 auto 20px;
+  }
+  .panel-title { font-size: 18px; font-weight: 800; margin-bottom: 24px; text-align: center; }
+
+  /* Amount input */
+  .amount-display {
+    text-align: center; margin-bottom: 24px;
+  }
+  .amount-input-wrap { position: relative; display: inline-block; }
+  .amount-big {
+    font-family: var(--mono); font-size: 52px; font-weight: 700;
+    background: transparent; border: none; outline: none;
+    color: var(--text); width: 220px; text-align: center;
+    letter-spacing: -0.02em;
+  }
+  .amount-cursor { color: var(--green); animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .rub-sign { font-family: var(--mono); font-size: 28px; color: var(--text3); margin-left: 4px; }
+
+  /* Category picker */
+  .cats-scroll {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 20px;
+    scrollbar-width: none;
+  }
+  .cats-scroll::-webkit-scrollbar { display: none; }
+  .cat-pill {
+    flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 14px; border-radius: 14px;
+    background: var(--bg3); border: 1px solid var(--border);
+    cursor: pointer; transition: all 0.15s; min-width: 64px;
+  }
+  .cat-pill:hover { border-color: var(--border2); }
+  .cat-pill.selected { background: var(--green-dim); border-color: rgba(0,232,122,0.4); }
+  .cat-pill-emoji { font-size: 20px; }
+  .cat-pill-name { font-size: 9px; font-weight: 700; color: var(--text2); text-align: center; letter-spacing: 0.02em; white-space: nowrap; }
+  .cat-pill.selected .cat-pill-name { color: var(--green); }
+
+  .cat-budget-hint {
+    background: var(--bg3); border-radius: 10px; padding: 10px 14px;
+    font-size: 12px; color: var(--text2); margin-bottom: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .cat-budget-hint .remaining { font-family: var(--mono); font-weight: 700; color: var(--green); }
+  .cat-budget-hint .remaining.low { color: var(--yellow); }
+  .cat-budget-hint .remaining.over { color: var(--red); }
+
+  /* Description */
+  .desc-input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; font-size: 14px;
+    font-family: var(--sans); color: var(--text); outline: none;
+    transition: border-color 0.2s; margin-bottom: 20px; resize: none;
+  }
+  .desc-input:focus { border-color: var(--border2); }
+  .desc-input::placeholder { color: var(--text3); }
+
+  /* Regret score */
+  .regret-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 10px; }
+  .regret-buttons { display: flex; gap: 6px; margin-bottom: 24px; }
+  .regret-btn {
+    flex: 1; padding: 10px 4px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg3); cursor: pointer; transition: all 0.15s;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .regret-btn .score { font-family: var(--mono); font-size: 14px; font-weight: 700; }
+  .regret-btn .label { font-size: 8px; font-weight: 700; text-align: center; line-height: 1.2; letter-spacing: 0.02em; color: var(--text3); }
+  .regret-btn.selected { border-color: rgba(255,255,255,0.25); }
+  .regret-btn[data-score="0"].selected { background: rgba(0,232,122,0.15); border-color: var(--green); }
+  .regret-btn[data-score="1"].selected { background: rgba(0,200,100,0.12); border-color: #00c864; }
+  .regret-btn[data-score="2"].selected { background: rgba(245,200,66,0.12); border-color: var(--yellow); }
+  .regret-btn[data-score="3"].selected { background: rgba(255,160,50,0.12); border-color: #ffa032; }
+  .regret-btn[data-score="4"].selected { background: rgba(255,100,60,0.12); border-color: #ff643c; }
+  .regret-btn[data-score="5"].selected { background: rgba(255,60,80,0.15); border-color: var(--red); }
+
+  /* Save button */
+  .save-btn {
+    width: 100%; padding: 16px; background: var(--green); color: #000;
+    border: none; border-radius: 14px; font-size: 15px; font-weight: 800;
+    font-family: var(--sans); cursor: pointer;
+    box-shadow: 0 0 24px var(--green-glow); transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .save-btn:hover { transform: scale(1.02); }
+  .save-btn:active { transform: scale(0.98); }
+
+  /* Success flash */
+  .success-flash {
+    position: fixed; inset: 0; background: var(--green);
+    opacity: 0; pointer-events: none; z-index: 999;
+    transition: opacity 0.15s;
+  }
+  .success-flash.fire { opacity: 0.15; }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(8,8,16,0.92); backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: center;
+    padding: 10px 0 20px; z-index: 50;
+  }
+  .bottom-nav-inner {
+    display: flex; align-items: center; gap: 0;
+    max-width: 480px; width: 100%;
+    padding: 0 16px;
+    justify-content: space-around;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 6px 16px; border-radius: 12px; cursor: pointer;
+    transition: all 0.2s; border: none; background: transparent;
+    font-family: var(--sans);
+  }
+  .nav-item.active .nav-icon { filter: none; }
+  .nav-icon { font-size: 22px; transition: transform 0.2s; line-height: 1; }
+  .nav-label { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.04em; }
+  .nav-item.active .nav-label { color: var(--green); }
+  .nav-item.active .nav-icon { transform: scale(1.1); }
+  .nav-add { background: var(--green); border-radius: 50%; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px var(--green-glow); border: none; cursor: pointer; transition: all 0.2s; font-size: 24px; }
+  .nav-add:hover { transform: scale(1.08); }
+  .nav-add:active { transform: scale(0.95); }
+
+  /* ── ANIMATIONS ── */
+  .stagger-1 { animation: fadeIn 0.4s 0.05s both; }
+  .stagger-2 { animation: fadeIn 0.4s 0.1s both; }
+  .stagger-3 { animation: fadeIn 0.4s 0.15s both; }
+  .stagger-4 { animation: fadeIn 0.4s 0.2s both; }
+  .stagger-5 { animation: fadeIn 0.4s 0.25s both; }
+
+  /* ── COUNTER ANIMATION ── */
+  .count-up { display: inline-block; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 0; }
+
+  /* ── REGRET WARNING ── */
+  .regret-warning {
+    background: var(--yellow-dim); border: 1px solid rgba(245,200,66,0.25);
+    border-radius: 10px; padding: 10px 14px; margin-bottom: 16px;
+    font-size: 12px; color: var(--yellow); font-weight: 500; display: none;
+  }
+  .regret-warning.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="success-flash" id="flash"></div>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="header stagger-1">
+    <div class="header-top">
+      <span class="month-label" id="monthLabel">Апрель 2026</span>
+      <button class="add-btn" onclick="openAdd()">+ Расход</button>
+    </div>
+  </div>
+
+  <div class="today-spent stagger-1">
+    <div class="today-amount" id="todayAmount">0 ₽</div>
+  </div>
+  <div style="padding: 4px 20px 0; display:flex; gap:16px;">
+    <span style="font-size:12px; color:var(--text3)">потрачено сегодня</span>
+    <span style="font-size:12px; color:var(--text3)">· норма <span style="color:var(--text2); font-family:var(--mono)" id="dailyNorm">—</span></span>
+  </div>
+
+  <!-- MONTH PROGRESS -->
+  <div class="month-bar-section stagger-2">
+    <div class="month-bar-header">
+      <span class="month-bar-label">Переменные расходы</span>
+      <span class="month-bar-amounts">
+        <span class="spent" id="monthSpent">0 ₽</span>
+        <span class="total"> / 70 500 ₽</span>
+      </span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="monthProgress" style="width:0%"></div>
+    </div>
+    <div class="day-progress" id="dayProgress">День 1 из 30 · ожидаемый прогресс 3%</div>
+  </div>
+
+  <!-- INSIGHT -->
+  <div class="section-title stagger-2">Инсайт</div>
+  <div class="insight stagger-2" id="insightCard">
+    <div class="insight-icon">✨</div>
+    <div class="insight-text" id="insightText">Добавляй расходы каждый день — через неделю я покажу первые паттерны.</div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="section-title stagger-3">Категории</div>
+  <div class="cats-grid stagger-3" id="catsGrid"></div>
+
+  <!-- RECENT -->
+  <div class="section-title stagger-4">Последние расходы</div>
+  <div class="expenses-list stagger-4" id="expensesList"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="nav-item active">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Главная</span>
+    </button>
+    <button class="nav-item">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">История</span>
+    </button>
+    <button class="nav-add" onclick="openAdd()">＋</button>
+    <button class="nav-item" onclick="exportCSV()">
+      <span class="nav-icon">📤</span>
+      <span class="nav-label">Экспорт</span>
+    </button>
+    <button class="nav-item">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Настройки</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ADD PANEL -->
+<div class="overlay" id="overlay" onclick="closeAdd(event)">
+  <div class="add-panel" id="addPanel">
+    <div class="panel-handle"></div>
+    <div class="panel-title">Новый расход</div>
+
+    <!-- Amount -->
+    <div class="amount-display">
+      <div class="amount-input-wrap">
+        <input class="amount-big" id="amountInput" type="number" inputmode="numeric" placeholder="0" min="0">
+        <span class="rub-sign">₽</span>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="cats-scroll" id="catPicker"></div>
+    <div class="cat-budget-hint" id="catHint">
+      <span>Выбери категорию</span>
+      <span class="remaining">— ₽</span>
+    </div>
+
+    <!-- Description -->
+    <textarea class="desc-input" id="descInput" placeholder="На что? (необязательно)" rows="2"></textarea>
+
+    <!-- Regret -->
+    <div class="regret-label">Насколько нужна была эта покупка?</div>
+    <div class="regret-buttons" id="regretBtns"></div>
+
+    <!-- Warning -->
+    <div class="regret-warning" id="regretWarning">
+      🤔 Подожди 24 часа перед покупками с высоким regret-score
+    </div>
+
+    <button class="save-btn" onclick="saveExpense()">Сохранить</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+
+const BUDGET_CONFIG = {
+  monthly_income: 295000,
+  total_variable: 70500,
+  categories: [
+    { id:'groceries',    name:'Продукты',         emoji:'🛒', budget:25000, color:'#4CAF50' },
+    { id:'food_out',     name:'Еда вне дома',      emoji:'🍔', budget:8000,  color:'#FF9800' },
+    { id:'taxi',         name:'Такси',             emoji:'🚕', budget:5000,  color:'#FFEB3B' },
+    { id:'transport',    name:'Транспорт',         emoji:'🚂', budget:6500,  color:'#4d9fff' },
+    { id:'health',       name:'Здоровье',          emoji:'💊', budget:3000,  color:'#E91E63' },
+    { id:'leisure',      name:'Развлечения',       emoji:'🎭', budget:6000,  color:'#9C27B0' },
+    { id:'clothes',      name:'Одежда',            emoji:'👕', budget:5000,  color:'#00BCD4' },
+    { id:'marketplaces', name:'Маркетплейсы',      emoji:'📦', budget:5000,  color:'#FF5722' },
+    { id:'beauty',       name:'Красота',           emoji:'💈', budget:2000,  color:'#F06292' },
+    { id:'misc',         name:'Прочее',            emoji:'🎲', budget:5000,  color:'#78909C' },
+  ]
+};
+
+const REGRET_LABELS = [
+  {score:0, label:'Нужно',     color:'#00e87a'},
+  {score:1, label:'Ок',        color:'#00c864'},
+  {score:2, label:'Норм',      color:'#f5c842'},
+  {score:3, label:'Сомнение',  color:'#ffa032'},
+  {score:4, label:'Лишнее',    color:'#ff643c'},
+  {score:5, label:'Зря',       color:'#ff4d6a'},
+];
+
+function loadExpenses() {
+  try { return JSON.parse(localStorage.getItem('ft_expenses') || '[]'); } catch { return []; }
+}
+function saveExpenses(arr) { localStorage.setItem('ft_expenses', JSON.stringify(arr)); }
+
+function getToday() { return new Date().toISOString().split('T')[0]; }
+
+function getMonthExpenses() {
+  const now = new Date();
+  const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return loadExpenses().filter(e => e.date.startsWith(prefix));
+}
+
+function getTodayExpenses() {
+  return loadExpenses().filter(e => e.date === getToday());
+}
+
+function getCategorySpent(catId, expenses) {
+  return expenses.filter(e => e.category_id === catId).reduce((s,e) => s+e.amount, 0);
+}
+
+function fmtRub(n) {
+  if (n >= 1000) return Math.round(n).toLocaleString('ru') + ' ₽';
+  return Math.round(n) + ' ₽';
+}
+
+// Seed demo data if empty
+function seedDemoData() {
+  if (loadExpenses().length > 0) return;
+  const today = new Date();
+  const demos = [
+    { days:0, cat:'food_out',     desc:'Boltay — кофе и круассан',    amount:360,  regret:2 },
+    { days:0, cat:'groceries',    desc:'ВкусВилл — продукты',         amount:1840, regret:0 },
+    { days:0, cat:'taxi',         desc:'Яндекс Такси до МФТИ',        amount:380,  regret:1 },
+    { days:1, cat:'food_out',     desc:'Яндекс Еда — пицца домой',    amount:1240, regret:4 },
+    { days:1, cat:'marketplaces', desc:'Ozon — наушники',             amount:3200, regret:3 },
+    { days:1, cat:'groceries',    desc:'Яндекс Лавка — срочно',       amount:890,  regret:2 },
+    { days:2, cat:'food_out',     desc:'Boltay — завтрак',            amount:360,  regret:2 },
+    { days:2, cat:'transport',    desc:'Поезда — билет домой',        amount:3200, regret:0 },
+    { days:3, cat:'health',       desc:'Аптека — витамины',           amount:680,  regret:0 },
+    { days:3, cat:'groceries',    desc:'ВкусВилл',                    amount:2100, regret:0 },
+    { days:4, cat:'clothes',      desc:'Lamoda — кроссовки',          amount:4800, regret:3 },
+    { days:4, cat:'food_out',     desc:'Boltay',                      amount:360,  regret:2 },
+    { days:5, cat:'leisure',      desc:'Кино — Кинотеатр Москва',     amount:800,  regret:1 },
+    { days:5, cat:'groceries',    desc:'Пятёрочка',                   amount:620,  regret:0 },
+    { days:6, cat:'food_out',     desc:'IP Bazhenova — ужин',         amount:1200, regret:2 },
+  ];
+  const expenses = demos.map((d,i) => {
+    const d_ = new Date(today); d_.setDate(d_.getDate() - d.days);
+    return {
+      id: Date.now() + i,
+      date: d_.toISOString().split('T')[0],
+      amount: d.amount, category_id: d.cat,
+      description: d.desc, regret_score: d.regret,
+      created_at: d_.toISOString()
+    };
+  });
+  saveExpenses(expenses);
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+
+function animateCount(el, to, duration=700) {
+  const start = performance.now();
+  const from = 0;
+  function step(now) {
+    const p = Math.min((now-start)/duration, 1);
+    const ease = 1 - Math.pow(1-p, 3);
+    const val = Math.round(from + (to-from)*ease);
+    el.textContent = val.toLocaleString('ru') + ' ₽';
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderDashboard() {
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const dayOfMonth = now.getDate();
+  const monthExpenses = getMonthExpenses();
+  const todayExpenses = getTodayExpenses();
+
+  // Month label
+  document.getElementById('monthLabel').textContent =
+    now.toLocaleDateString('ru', {month:'long', year:'numeric'}).replace(/^./, c=>c.toUpperCase());
+
+  // Today
+  const todayTotal = todayExpenses.reduce((s,e)=>s+e.amount,0);
+  const dailyNorm = Math.round(BUDGET_CONFIG.total_variable / daysInMonth);
+  const todayEl = document.getElementById('todayAmount');
+  animateCount(todayEl, todayTotal);
+  document.getElementById('dailyNorm').textContent = fmtRub(dailyNorm);
+
+  // Month progress
+  const monthTotal = monthExpenses.reduce((s,e)=>s+e.amount,0);
+  const monthBudget = BUDGET_CONFIG.total_variable;
+  const pct = Math.min(monthTotal / monthBudget * 100, 100);
+  const expectedPct = (dayOfMonth / daysInMonth) * 100;
+
+  document.getElementById('monthSpent').textContent = fmtRub(monthTotal);
+  const bar = document.getElementById('monthProgress');
+  setTimeout(() => {
+    bar.style.width = pct + '%';
+    bar.className = 'progress-fill' + (pct > 100 ? ' over' : pct > 80 ? ' warn' : '');
+  }, 100);
+  document.getElementById('dayProgress').textContent =
+    `День ${dayOfMonth} из ${daysInMonth} · ожидаемый прогресс ${Math.round(expectedPct)}%`;
+
+  // Insight
+  renderInsight(monthExpenses, todayTotal, dailyNorm, dayOfMonth, daysInMonth);
+
+  // Categories
+  renderCategories(monthExpenses);
+
+  // Recent
+  renderRecent();
+}
+
+function renderInsight(monthExpenses, todayTotal, dailyNorm, day, daysInMonth) {
+  const card = document.getElementById('insightCard');
+  const text = document.getElementById('insightText');
+
+  // Check food_out
+  const foodSpent = getCategorySpent('food_out', monthExpenses);
+  const foodBudget = 8000;
+  const foodPct = foodSpent / foodBudget;
+
+  // Check marketplaces
+  const mktSpent = getCategorySpent('marketplaces', monthExpenses);
+  const mktBudget = 5000;
+
+  // Check high regret
+  const highRegret = monthExpenses.filter(e => e.regret_score >= 4);
+  const highRegretSum = highRegret.reduce((s,e)=>s+e.amount,0);
+
+  if (todayTotal > dailyNorm * 1.5 && todayTotal > 0) {
+    card.className = 'insight warn stagger-2';
+    text.innerHTML = `📊 Сегодня потрачено <strong>${fmtRub(todayTotal)}</strong> — в ${(todayTotal/dailyNorm).toFixed(1)}x выше нормы`;
+  } else if (foodPct > 0.6 && day <= 20) {
+    card.className = 'insight warn stagger-2';
+    text.innerHTML = `🍔 Еда вне дома: уже <strong>${Math.round(foodPct*100)}%</strong> бюджета за ${day} дней месяца`;
+  } else if (mktSpent > mktBudget * 0.8) {
+    card.className = 'insight danger stagger-2';
+    text.innerHTML = `📦 Маркетплейсы на грани — потрачено <strong>${fmtRub(mktSpent)}</strong> из ${fmtRub(mktBudget)}`;
+  } else if (highRegretSum > 2000) {
+    card.className = 'insight warn stagger-2';
+    text.innerHTML = `🤔 Сомнительных покупок за месяц: <strong>${fmtRub(highRegretSum)}</strong> (${highRegret.length} шт.)`;
+  } else if (monthExpenses.length === 0) {
+    card.className = 'insight stagger-2';
+    text.innerHTML = `✨ Добавляй расходы каждый день — покажу инсайты через неделю`;
+  } else {
+    card.className = 'insight stagger-2';
+    text.innerHTML = `✅ Всё под контролем. Потрачено <strong>${fmtRub(monthExpenses.reduce((s,e)=>s+e.amount,0))}</strong> из ${fmtRub(BUDGET_CONFIG.total_variable)}`;
+  }
+}
+
+function renderCategories(monthExpenses) {
+  const grid = document.getElementById('catsGrid');
+  grid.innerHTML = '';
+  BUDGET_CONFIG.categories.forEach(cat => {
+    const spent = getCategorySpent(cat.id, monthExpenses);
+    const pct = Math.min(spent / cat.budget * 100, 200);
+    const remaining = cat.budget - spent;
+    const status = spent > cat.budget ? 'over' : spent > cat.budget * 0.8 ? 'warn' : 'ok';
+    const badgeText = status === 'over' ? 'ЛИМИТ' : status === 'warn' ? '80%+' : 'OK';
+
+    const barColor = status === 'over' ? '#ff4d6a' : status === 'warn' ? '#f5c842' : cat.color;
+    const remainColor = status === 'over' ? 'var(--red)' : status === 'warn' ? 'var(--yellow)' : 'var(--green)';
+    const remainText = status === 'over'
+      ? `+${fmtRub(Math.abs(remaining))} превышение`
+      : `${fmtRub(remaining)} осталось`;
+
+    grid.innerHTML += `
+      <div class="cat-card ${status}">
+        <div class="cat-top">
+          <span class="cat-emoji">${cat.emoji}</span>
+          <span class="cat-badge ${status}">${badgeText}</span>
+        </div>
+        <div class="cat-name">${cat.name}</div>
+        <div class="cat-amounts">
+          <span class="cat-spent">${Math.round(spent).toLocaleString('ru')}</span>
+          <span class="cat-budget-total">/ ${(cat.budget/1000).toFixed(0)}к ₽</span>
+        </div>
+        <div class="cat-remaining" style="color:${remainColor}">${remainText}</div>
+        <div class="cat-bar">
+          <div class="cat-bar-fill" style="width:0%; background:${barColor}"
+               data-width="${Math.min(pct,100)}"></div>
+        </div>
+      </div>`;
+  });
+
+  // animate bars
+  setTimeout(() => {
+    grid.querySelectorAll('.cat-bar-fill').forEach(b => {
+      b.style.transition = 'width 0.9s cubic-bezier(.4,0,.2,1)';
+      b.style.width = b.dataset.width + '%';
+    });
+  }, 150);
+}
+
+function renderRecent() {
+  const all = loadExpenses().sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0,6);
+  const list = document.getElementById('expensesList');
+  if (all.length === 0) {
+    list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">Пока нет расходов.<br>Нажми «+ Расход» чтобы добавить первый.</div>`;
+    return;
+  }
+  list.innerHTML = all.map((e, i) => {
+    const cat = BUDGET_CONFIG.categories.find(c=>c.id===e.category_id) || {emoji:'❓',name:e.category_id};
+    const dots = Array.from({length:5}, (_,idx) => {
+      const filled = idx < e.regret_score;
+      const mild = e.regret_score <= 2;
+      return `<span class="regret-dot ${filled ? 'filled' + (mild?' mild':'') : ''}"></span>`;
+    }).join('');
+    const dateObj = new Date(e.date + 'T12:00:00');
+    const dateStr = dateObj.toLocaleDateString('ru',{day:'numeric',month:'short'});
+    return `
+      <div class="expense-row" style="animation-delay:${i*0.04}s">
+        <div class="expense-emoji">${cat.emoji}</div>
+        <div class="expense-info">
+          <div class="expense-desc">${e.description || cat.name}</div>
+          <div class="expense-meta">${dateStr} · ${cat.name}</div>
+        </div>
+        <div class="expense-right">
+          <div class="expense-amount">−${e.amount.toLocaleString('ru')} ₽</div>
+          <div class="regret-dots">${dots}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// ADD PANEL
+// ═══════════════════════════════════════════════════════
+
+let selectedCat = null;
+let selectedRegret = 0;
+
+function openAdd() {
+  document.getElementById('overlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  buildCatPicker();
+  buildRegretBtns();
+  document.getElementById('amountInput').focus();
+  selectedCat = null; selectedRegret = 0;
+  document.getElementById('descInput').value = '';
+  document.getElementById('amountInput').value = '';
+  updateCatHint();
+}
+
+function closeAdd(e) {
+  if (e && e.target !== document.getElementById('overlay')) return;
+  document.getElementById('overlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function buildCatPicker() {
+  const monthExpenses = getMonthExpenses();
+  const picker = document.getElementById('catPicker');
+  picker.innerHTML = BUDGET_CONFIG.categories.map(cat => {
+    const spent = getCategorySpent(cat.id, monthExpenses);
+    const over = spent >= cat.budget;
+    return `
+      <div class="cat-pill ${over?'over':''}" data-id="${cat.id}" onclick="selectCat('${cat.id}')">
+        <span class="cat-pill-emoji">${cat.emoji}</span>
+        <span class="cat-pill-name">${cat.name.split(' ')[0]}</span>
+      </div>`;
+  }).join('');
+}
+
+function selectCat(id) {
+  selectedCat = id;
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('selected'));
+  document.querySelector(`.cat-pill[data-id="${id}"]`)?.classList.add('selected');
+  updateCatHint();
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+
+function updateCatHint() {
+  const hint = document.getElementById('catHint');
+  if (!selectedCat) {
+    hint.innerHTML = '<span>Выбери категорию</span><span class="remaining">— ₽</span>';
+    return;
+  }
+  const cat = BUDGET_CONFIG.categories.find(c=>c.id===selectedCat);
+  const spent = getCategorySpent(selectedCat, getMonthExpenses());
+  const remaining = cat.budget - spent;
+  const cls = remaining < 0 ? 'over' : remaining < cat.budget*0.2 ? 'low' : '';
+  const txt = remaining < 0 ? `ПРЕВЫШЕНО на ${fmtRub(Math.abs(remaining))}` : `${fmtRub(remaining)} осталось`;
+  hint.innerHTML = `<span>${cat.emoji} ${cat.name}</span><span class="remaining ${cls}">${txt}</span>`;
+}
+
+function buildRegretBtns() {
+  const cont = document.getElementById('regretBtns');
+  cont.innerHTML = REGRET_LABELS.map(r => `
+    <button class="regret-btn ${r.score===0?'selected':''}" data-score="${r.score}" onclick="selectRegret(${r.score})">
+      <span class="score" style="color:${r.color}">${r.score}</span>
+      <span class="label">${r.label}</span>
+    </button>`).join('');
+  selectedRegret = 0;
+}
+
+function selectRegret(score) {
+  selectedRegret = score;
+  document.querySelectorAll('.regret-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelector(`.regret-btn[data-score="${score}"]`)?.classList.add('selected');
+  const warn = document.getElementById('regretWarning');
+  warn.classList.toggle('show', score >= 4);
+  if (navigator.vibrate) navigator.vibrate(6);
+}
+
+function saveExpense() {
+  const amount = parseFloat(document.getElementById('amountInput').value);
+  if (!amount || amount <= 0) {
+    document.getElementById('amountInput').style.boxShadow = '0 0 0 2px var(--red)';
+    setTimeout(()=>document.getElementById('amountInput').style.boxShadow='',1000);
+    return;
+  }
+  if (!selectedCat) {
+    document.getElementById('catPicker').style.outline = '2px solid var(--red)';
+    setTimeout(()=>document.getElementById('catPicker').style.outline='',1000);
+    return;
+  }
+  const expense = {
+    id: Date.now(),
+    date: getToday(),
+    amount,
+    category_id: selectedCat,
+    description: document.getElementById('descInput').value.trim(),
+    regret_score: selectedRegret,
+    created_at: new Date().toISOString()
+  };
+  const all = loadExpenses();
+  all.push(expense);
+  saveExpenses(all);
+
+  // Success flash
+  const flash = document.getElementById('flash');
+  flash.classList.add('fire');
+  setTimeout(()=>flash.classList.remove('fire'), 200);
+  if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
+
+  document.getElementById('overlay').classList.remove('active');
+  document.body.style.overflow = '';
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════
+
+function exportCSV() {
+  const expenses = loadExpenses().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const catName = id => (BUDGET_CONFIG.categories.find(c=>c.id===id)||{name:id}).name;
+  const rows = [['Дата','Сумма','Категория','Описание','Оценка_ненужности']];
+  expenses.forEach(e => rows.push([e.date, e.amount, catName(e.category_id), e.description || '', e.regret_score]));
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  const now = new Date();
+  a.download = `expenses_${now.getFullYear()}_${String(now.getMonth()+1).padStart(2,'0')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+seedDemoData();
+renderDashboard();
+</script>
+</body>
+</html>
