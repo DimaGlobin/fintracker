@@ -359,68 +359,162 @@ const BUDGET_PCT = {
   misc:         0.04,
 };
 
+// Текущая версия формата конфига. Увеличивать при каждом изменении схемы.
+const CONFIG_VERSION = 2;
+
 const DEFAULT_CONFIG = {
+  version: CONFIG_VERSION,
   monthly_income: 0,
   currency: 'RUB',
   categories: [
-    { id:'groceries',    name:'Продукты',      emoji:'🛒', budget:0, color:'#4CAF50', notes:'' },
-    { id:'food_out',     name:'Еда вне дома',  emoji:'🍔', budget:0, color:'#FF9800', notes:'' },
-    { id:'taxi',         name:'Такси',          emoji:'🚕', budget:0, color:'#FFEB3B', notes:'' },
-    { id:'transport',    name:'Транспорт',      emoji:'🚂', budget:0, color:'#2196F3', notes:'' },
-    { id:'health',       name:'Здоровье',       emoji:'💊', budget:0, color:'#E91E63', notes:'' },
-    { id:'leisure',      name:'Развлечения',    emoji:'🎭', budget:0, color:'#9C27B0', notes:'' },
-    { id:'clothes',      name:'Одежда',         emoji:'👕', budget:0, color:'#00BCD4', notes:'' },
-    { id:'marketplaces', name:'Маркетплейсы',   emoji:'📦', budget:0, color:'#FF5722', notes:'' },
-    { id:'beauty',       name:'Красота',        emoji:'💈', budget:0, color:'#F06292', notes:'' },
-    { id:'misc',         name:'Прочее',         emoji:'🎲', budget:0, color:'#78909C', notes:'' },
+    { id:'groceries',    name:'Продукты',      emoji:'🛒', budget:0, color:'#4CAF50', notes:'', fixed:false },
+    { id:'food_out',     name:'Еда вне дома',  emoji:'🍔', budget:0, color:'#FF9800', notes:'', fixed:false },
+    { id:'taxi',         name:'Такси',          emoji:'🚕', budget:0, color:'#FFEB3B', notes:'', fixed:false },
+    { id:'transport',    name:'Транспорт',      emoji:'🚂', budget:0, color:'#2196F3', notes:'', fixed:false },
+    { id:'health',       name:'Здоровье',       emoji:'💊', budget:0, color:'#E91E63', notes:'', fixed:false },
+    { id:'leisure',      name:'Развлечения',    emoji:'🎭', budget:0, color:'#9C27B0', notes:'', fixed:false },
+    { id:'clothes',      name:'Одежда',         emoji:'👕', budget:0, color:'#00BCD4', notes:'', fixed:false },
+    { id:'marketplaces', name:'Маркетплейсы',   emoji:'📦', budget:0, color:'#FF5722', notes:'', fixed:false },
+    { id:'beauty',       name:'Красота',        emoji:'💈', budget:0, color:'#F06292', notes:'', fixed:false },
+    { id:'misc',         name:'Прочее',         emoji:'🎲', budget:0, color:'#78909C', notes:'', fixed:false },
   ],
-  fixed_expenses: [],
   savings_plan:   [],
   budget_summary: { total_variable_budget:0, total_fixed:0, total_savings:0, free_money:0 },
 };
 
+// ── Миграция конфига ──────────────────────────────────────────────
+// Дотягивает старый конфиг до актуальной версии, сохраняя данные пользователя.
+// Каждая миграция — отдельный шаг: v0→1, v1→2 и т.д.
+function migrateConfig(config) {
+  if (!config || typeof config !== 'object') {
+    return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  }
+
+  const v = config.version || 0;
+  if (v >= CONFIG_VERSION) return config;
+
+  // v0 → v1: добавляем недостающие поля из DEFAULT_CONFIG
+  if (v < 1) {
+    // Гарантируем наличие всех верхних полей
+    if (!config.currency)        config.currency = DEFAULT_CONFIG.currency;
+    if (!config.fixed_expenses)  config.fixed_expenses = [];
+    if (!config.savings_plan)    config.savings_plan = [];
+    if (!config.budget_summary)  config.budget_summary = { ...DEFAULT_CONFIG.budget_summary };
+
+    // Гарантируем что у каждой категории есть все поля
+    if (Array.isArray(config.categories)) {
+      config.categories = config.categories.map(cat => ({
+        id:    cat.id    || 'unknown',
+        name:  cat.name  || cat.id || 'Без названия',
+        emoji: cat.emoji || '❓',
+        budget: cat.budget || 0,
+        color: cat.color || '#78909C',
+        notes: cat.notes || '',
+        fixed: cat.fixed || false,
+      }));
+    } else {
+      config.categories = JSON.parse(JSON.stringify(DEFAULT_CONFIG.categories));
+    }
+
+    config.version = 1;
+  }
+
+  // v1 → v2: фиксированные расходы становятся категориями с fixed:true
+  if (v < 2) {
+    // Добавляем fixed:false ко всем существующим категориям (если ещё нет)
+    if (Array.isArray(config.categories)) {
+      config.categories.forEach(cat => {
+        if (cat.fixed === undefined) cat.fixed = false;
+      });
+    }
+
+    // Мигрируем old fixed_expenses → categories с fixed:true
+    const existingIds = new Set((config.categories || []).map(c => c.id));
+    if (Array.isArray(config.fixed_expenses)) {
+      config.fixed_expenses.forEach(f => {
+        const id = f.id || ('fixed_' + (f.name || '').toLowerCase().replace(/[^a-zа-яё0-9]/gi, '_') + '_' + Date.now());
+        if (!existingIds.has(id)) {
+          config.categories.push({
+            id,
+            name:  f.name  || 'Без названия',
+            emoji: f.emoji || '📌',
+            budget: f.amount || 0,
+            color: '#607D8B',
+            notes: '',
+            fixed: true,
+          });
+          existingIds.add(id);
+        }
+      });
+    }
+    delete config.fixed_expenses;
+
+    config.version = 2;
+  }
+
+  // Будущие миграции добавлять здесь:
+  // if (v < 3) { ... config.version = 3; }
+
+  return config;
+}
+
 // Автораспределение бюджета по процентам от дохода.
 // Округляет до 500₽. Вызывается при вводе зарплаты если лимиты ещё нулевые.
 function distributeBudget(config, income) {
-  config.categories.forEach(cat => {
+  config.categories.filter(c => !c.fixed).forEach(cat => {
     const pct = BUDGET_PCT[cat.id] || 0.03;
     cat.budget = Math.round(income * pct / 500) * 500;
   });
 }
 
 async function loadBudgetConfig() {
+  let config = null;
+
   // 1. localStorage
   const cached = localStorage.getItem(CONFIG_KEY);
   if (cached) {
-    try { return JSON.parse(cached); } catch {}
+    try { config = JSON.parse(cached); } catch {}
   }
+
   // 2. Сервер
-  try {
-    const r = await fetch('/api/config');
-    if (r.ok) {
-      const config = await r.json();
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-      return config;
-    }
-  } catch {}
-  // 3. Первый запуск — сохраняем дефолт
-  const config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-  saveBudgetConfig(config);
+  if (!config) {
+    try {
+      const r = await fetch('/api/config');
+      if (r.ok) config = await r.json();
+    } catch {}
+  }
+
+  // 3. Первый запуск — дефолт
+  if (!config) {
+    config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  }
+
+  // Миграция: дотягиваем старый конфиг до актуальной версии
+  const before = config.version || 0;
+  config = migrateConfig(config);
+  if (config.version !== before) {
+    saveBudgetConfig(config); // сохраняем обновлённый конфиг
+  } else {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  }
+
   return config;
 }
 
 function getBudgetConfig() {
+  let config;
   try {
-    return JSON.parse(localStorage.getItem(CONFIG_KEY)) || JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-  } catch {
-    return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-  }
+    config = JSON.parse(localStorage.getItem(CONFIG_KEY));
+  } catch {}
+  if (!config) config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  return migrateConfig(config);
 }
 
 function saveBudgetConfig(config) {
   // Вычисляем budget_summary автоматически
-  const totalVariable = (config.categories || []).reduce((s, c) => s + (c.budget || 0), 0);
-  const totalFixed    = (config.fixed_expenses || []).reduce((s, f) => s + (f.amount || 0), 0);
+  const cats = config.categories || [];
+  const totalVariable = cats.filter(c => !c.fixed).reduce((s, c) => s + (c.budget || 0), 0);
+  const totalFixed    = cats.filter(c => c.fixed).reduce((s, c) => s + (c.budget || 0), 0);
   const totalSavings  = (config.savings_plan || []).reduce((s, p) => s + (p.monthly || 0), 0);
   config.budget_summary = {
     total_variable_budget: totalVariable,
@@ -441,14 +535,34 @@ function saveBudgetConfig(config) {
 // EXPENSES — публичный API (синхронный, из памяти)
 // ═══════════════════════════════════════════════════════════════
 
+// Нормализация записи расхода: гарантируем наличие всех полей.
+// Старые записи могут не содержать новых полей — заполняем дефолтами.
+function normalizeExpense(e) {
+  if (!e || typeof e !== 'object') return null;
+  return {
+    id:           e.id          ?? Date.now(),
+    date:         e.date        || new Date().toISOString().split('T')[0],
+    amount:       Number(e.amount) || 0,
+    category_id:  e.category_id || 'misc',
+    description:  e.description || '',
+    regret_score: Number(e.regret_score) ?? 3,
+    created_at:   e.created_at  || e.date || new Date().toISOString(),
+  };
+}
+
 function _useFileStorage() {
   return _expenses !== null; // true если сервер или FS API, false = localStorage
 }
 
 function loadExpenses() {
-  if (_useFileStorage()) return [..._expenses];
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-  catch { return []; }
+  let raw;
+  if (_useFileStorage()) {
+    raw = [..._expenses];
+  } else {
+    try { raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+    catch { return []; }
+  }
+  return raw.map(normalizeExpense).filter(Boolean);
 }
 
 function saveExpenses(arr) {
@@ -506,6 +620,31 @@ function deleteExpense(id) {
   } else {
     const filtered = loadExpenses().filter(e => e.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  }
+}
+
+function updateExpense(id, updates) {
+  if (_useFileStorage()) {
+    const idx = _expenses.findIndex(e => e.id === id);
+    if (idx < 0) return null;
+    const old = _expenses[idx];
+    const updated = normalizeExpense({ ...old, ...updates, id: old.id, created_at: old.created_at });
+    _expenses[idx] = updated;
+    // Перезаписываем через delete + append (работает с существующим API сервера)
+    if (serverStore.available) {
+      serverStore.deleteExpense(id).then(() => serverStore.appendExpense(updated));
+    } else if (fileStore.isConnected) {
+      fileStore.deleteExpense(id).then(() => fileStore.appendExpense(updated));
+    }
+    return updated;
+  } else {
+    const all = loadExpenses();
+    const idx = all.findIndex(e => e.id === id);
+    if (idx < 0) return null;
+    const updated = normalizeExpense({ ...all[idx], ...updates, id: all[idx].id, created_at: all[idx].created_at });
+    all[idx] = updated;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    return updated;
   }
 }
 

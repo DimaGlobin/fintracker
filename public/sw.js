@@ -1,10 +1,13 @@
 // Service Worker — офлайн-кеш
-const CACHE = 'fintracker-v3';
+// Стратегия: network-first для HTML/JS/CSS (быстро подхватывает обновления),
+// cache-only для CDN-ресурсов. API запросы не кешируются.
+const CACHE = 'fintracker-v4';
 const ASSETS = [
   '/',
   '/add.html',
   '/history.html',
   '/settings.html',
+  '/charts.html',
   '/css/styles.css',
   '/js/app.js',
   '/manifest.json',
@@ -29,16 +32,18 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (e.request.url.includes('/api/')) return; // не кешируем API
+
+  // Network-first: пробуем сеть, при ошибке — кэш.
+  // Это гарантирует что обновления видны сразу, а офлайн работает.
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
+    fetch(e.request)
+      .then(res => {
         if (res.ok) {
           const clone = res.clone();
           caches.open(CACHE).then(cache => cache.put(e.request, clone));
         }
         return res;
-      }).catch(() => caches.match('/'));
-    })
+      })
+      .catch(() => caches.match(e.request).then(cached => cached || caches.match('/')))
   );
 });

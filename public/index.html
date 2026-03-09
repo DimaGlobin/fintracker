@@ -138,8 +138,10 @@
   </div>
 
   <!-- CATEGORIES -->
-  <div class="section-title s3">Категории</div>
+  <div class="section-title s3">Переменные расходы</div>
   <div class="cats-grid s3" id="catsGrid"></div>
+  <div class="section-title s3" id="fixedTitle" style="display:none">Фиксированные</div>
+  <div class="cats-grid s3" id="fixedGrid"></div>
 
   <!-- RECENT -->
   <div class="section-title s4">Последние расходы</div>
@@ -211,10 +213,12 @@ function renderDashboard() {
   animateCount(document.getElementById('todayAmount'), todayTotal);
   document.getElementById('dailyNorm').textContent = fmtRub(dailyNorm);
 
-  // Month progress
-  const monthTotal  = monthExp.reduce((s, e) => s + e.amount, 0);
+  // Month progress — only variable categories
+  const variableIds = new Set(config.categories.filter(c => !c.fixed).map(c => c.id));
+  const monthVarExp = monthExp.filter(e => variableIds.has(e.category_id));
+  const monthTotal  = monthVarExp.reduce((s, e) => s + e.amount, 0);
   const monthBudget = config.budget_summary.total_variable_budget;
-  const pct         = Math.min(monthTotal / monthBudget * 100, 100);
+  const pct         = monthBudget ? Math.min(monthTotal / monthBudget * 100, 100) : 0;
   const expectedPct = (dayOfMonth / daysInMonth) * 100;
 
   document.getElementById('monthSpent').textContent = fmtRub(monthTotal);
@@ -246,11 +250,11 @@ function renderInsight(config, monthExp, todayTotal, dailyNorm, day, daysInMonth
   const card = document.getElementById('insightCard');
   const text = document.getElementById('insightText');
 
-  const foodCat   = config.categories.find(c => c.id === 'food_out');
+  const foodCat   = config.categories.find(c => c.id === 'food_out') || { budget: 0 };
   const foodSpent = monthExp.filter(e => e.category_id === 'food_out').reduce((s,e) => s+e.amount, 0);
-  const foodPct   = foodSpent / foodCat.budget;
+  const foodPct   = foodCat.budget ? foodSpent / foodCat.budget : 0;
 
-  const mktCat    = config.categories.find(c => c.id === 'marketplaces');
+  const mktCat    = config.categories.find(c => c.id === 'marketplaces') || { budget: 0 };
   const mktSpent  = monthExp.filter(e => e.category_id === 'marketplaces').reduce((s,e) => s+e.amount, 0);
 
   const highRegret    = monthExp.filter(e => e.regret_score >= 4);
@@ -287,25 +291,25 @@ function renderInsight(config, monthExp, todayTotal, dailyNorm, day, daysInMonth
   }
 }
 
-function renderCategories(config, monthExp) {
-  const grid = document.getElementById('catsGrid');
-  grid.innerHTML = config.categories.map((cat, i) => {
+function renderCatCards(cats, grid, monthExp, offset) {
+  grid.innerHTML = cats.map((cat, i) => {
     const spent   = monthExp.filter(e => e.category_id === cat.id).reduce((s,e) => s+e.amount, 0);
-    const pct     = Math.min(spent / cat.budget * 100, 200);
+    const pct     = cat.budget ? Math.min(spent / cat.budget * 100, 200) : 0;
     const remain  = cat.budget - spent;
-    const status  = spent > cat.budget ? 'over' : spent > cat.budget * 0.8 ? 'warn' : 'ok';
+    const status  = cat.budget && spent > cat.budget ? 'over' : cat.budget && spent > cat.budget * 0.8 ? 'warn' : 'ok';
     const barColor   = status === 'over' ? '#ff4d6a' : status === 'warn' ? '#f5c842' : cat.color;
     const remainColor = status === 'over' ? 'var(--red)' : status === 'warn' ? 'var(--yellow)' : 'var(--green)';
     const remainText  = status === 'over'
       ? `+${fmtRub(Math.abs(remain))} превышение`
       : `${fmtRub(remain)} осталось`;
-    const badge = status === 'over' ? 'ЛИМИТ' : status === 'warn' ? '80%+' : 'OK';
+    const badge = cat.fixed ? 'ФИКС' : status === 'over' ? 'ЛИМИТ' : status === 'warn' ? '80%+' : 'OK';
+    const badgeCls = cat.fixed ? 'ok' : status;
 
     return `
-      <a class="cat-card ${status}" href="history.html?cat=${cat.id}" style="animation:fadeIn 0.4s ${i*0.04 + 0.15}s both">
+      <a class="cat-card ${status}" href="history.html?cat=${cat.id}" style="animation:fadeIn 0.4s ${(offset+i)*0.04 + 0.15}s both">
         <div class="cat-top">
           <span class="cat-emoji">${cat.emoji}</span>
-          <span class="cat-badge ${status}">${badge}</span>
+          <span class="cat-badge ${badgeCls}">${badge}</span>
         </div>
         <div class="cat-name">${cat.name}</div>
         <div class="cat-amounts">
@@ -318,9 +322,28 @@ function renderCategories(config, monthExp) {
         </div>
       </a>`;
   }).join('');
+}
+
+function renderCategories(config, monthExp) {
+  const variable = config.categories.filter(c => !c.fixed);
+  const fixed    = config.categories.filter(c => c.fixed);
+
+  const varGrid   = document.getElementById('catsGrid');
+  const fixGrid   = document.getElementById('fixedGrid');
+  const fixTitle  = document.getElementById('fixedTitle');
+
+  renderCatCards(variable, varGrid, monthExp, 0);
+
+  if (fixed.length > 0) {
+    fixTitle.style.display = '';
+    renderCatCards(fixed, fixGrid, monthExp, variable.length);
+  } else {
+    fixTitle.style.display = 'none';
+    fixGrid.innerHTML = '';
+  }
 
   setTimeout(() => {
-    grid.querySelectorAll('.cat-bar-fill').forEach(b => {
+    document.querySelectorAll('.cat-bar-fill').forEach(b => {
       b.style.width = b.dataset.w + '%';
     });
   }, 200);

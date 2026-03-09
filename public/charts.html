@@ -146,9 +146,14 @@
   <!-- BUDGET VS FACT -->
   <div class="section-title s3">Бюджет vs Факт</div>
   <div class="chart-card s3">
-    <div class="chart-title">Использование бюджета по категориям</div>
+    <div class="chart-title">Переменные расходы</div>
     <div class="chart-subtitle">Серая линия — 100% бюджета</div>
     <div class="budget-rows" id="budgetRows"></div>
+  </div>
+  <div class="chart-card s3" id="fixedBudgetCard" style="margin-top:10px;display:none">
+    <div class="chart-title">Фиксированные расходы</div>
+    <div class="chart-subtitle">Запланированные vs фактические</div>
+    <div class="budget-rows" id="fixedBudgetRows"></div>
   </div>
 
   <!-- REGRET BREAKDOWN -->
@@ -274,7 +279,9 @@ function renderAll() {
 // ─── SUMMARY CHIPS ───────────────────────────────────────────────
 
 function renderSummary(config, expenses) {
-  const total    = expenses.reduce((s,e) => s+e.amount, 0);
+  const variableIds = new Set(config.categories.filter(c => !c.fixed).map(c => c.id));
+  const varExpenses = expenses.filter(e => variableIds.has(e.category_id));
+  const total    = varExpenses.reduce((s,e) => s+e.amount, 0);
   const days     = new Set(expenses.map(e => e.date)).size || 1;
   const avgDay   = total / days;
   const budget   = config.budget_summary.total_variable_budget;
@@ -457,24 +464,17 @@ function renderDonut(config, expenses) {
 
 // ─── BUDGET BARS ─────────────────────────────────────────────────
 
-function renderBudgetBars(config, expenses) {
-  const byCat = {};
-  expenses.forEach(e => { byCat[e.category_id] = (byCat[e.category_id] || 0) + e.amount; });
-
-  const rows = config.categories
-    .map(c => ({ ...c, spent: byCat[c.id] || 0 }))
-    .sort((a,b) => (b.spent/b.budget) - (a.spent/a.budget));
-
-  document.getElementById('budgetRows').innerHTML = rows.map(c => {
-    const pct    = Math.min(c.spent / c.budget * 100, 100);
-    const over   = c.spent > c.budget;
-    const warn   = c.spent > c.budget * 0.8;
+function budgetBarHTML(cats, byCat) {
+  return cats.map(c => {
+    const spent  = byCat[c.id] || 0;
+    const pct    = c.budget ? Math.min(spent / c.budget * 100, 100) : 0;
+    const over   = c.budget && spent > c.budget;
+    const warn   = c.budget && spent > c.budget * 0.8;
     const color  = over ? '#ff4d6a' : warn ? '#f5c842' : c.color;
-    const remain = c.budget - c.spent;
+    const remain = c.budget - spent;
     const numsHtml = over
       ? `<span class="over">+${fmtRub(Math.abs(remain))}</span>`
-      : `${fmtRub(c.spent)} / ${fmtRub(c.budget)}`;
-
+      : `${fmtRub(spent)} / ${fmtRub(c.budget)}`;
     return `
       <div class="budget-row">
         <div class="budget-row-top">
@@ -487,6 +487,27 @@ function renderBudgetBars(config, expenses) {
         </div>
       </div>`;
   }).join('');
+}
+
+function renderBudgetBars(config, expenses) {
+  const byCat = {};
+  expenses.forEach(e => { byCat[e.category_id] = (byCat[e.category_id] || 0) + e.amount; });
+
+  const variable = config.categories.filter(c => !c.fixed)
+    .map(c => ({ ...c, spent: byCat[c.id] || 0 }))
+    .sort((a,b) => (b.budget ? b.spent/b.budget : 0) - (a.budget ? a.spent/a.budget : 0));
+  document.getElementById('budgetRows').innerHTML = budgetBarHTML(variable, byCat);
+
+  const fixed = config.categories.filter(c => c.fixed);
+  const fixedCard = document.getElementById('fixedBudgetCard');
+  if (fixed.length > 0) {
+    const fixedSorted = fixed.map(c => ({ ...c, spent: byCat[c.id] || 0 }))
+      .sort((a,b) => (b.budget ? b.spent/b.budget : 0) - (a.budget ? a.spent/a.budget : 0));
+    document.getElementById('fixedBudgetRows').innerHTML = budgetBarHTML(fixedSorted, byCat);
+    fixedCard.style.display = '';
+  } else {
+    fixedCard.style.display = 'none';
+  }
 }
 
 // ─── REGRET BREAKDOWN ────────────────────────────────────────────

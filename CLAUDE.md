@@ -50,3 +50,19 @@ Vanilla JS multi-page PWA. No frameworks. All code is in `public/`, served as st
 | GET | `/api/index` | Month list with counts |
 | GET/POST/PUT/DELETE | `/api/expenses` | CRUD for expenses |
 | GET/POST | `/api/config` | User budget config |
+
+### Backward Compatibility
+
+User data must survive across updates. Three mechanisms ensure this:
+
+1. **Config versioning** (`CONFIG_VERSION` in `app.js`). Every config has a `version` field. On load, `migrateConfig()` runs step-by-step upgrades (v0→1, v1→2, …) filling missing fields with defaults while preserving user values. Increment `CONFIG_VERSION` and add a new `if (v < N)` block for each schema change.
+2. **Expense normalization** (`normalizeExpense()` in `app.js`). Every expense record is normalized on read — missing fields get safe defaults. Old JSONL records without new fields won't crash the UI.
+3. **Graceful category fallback**. All `.find()` lookups on `config.categories` must have a fallback: `|| { emoji:'❓', name: id, budget: 0 }`. If a user's expenses reference a deleted/renamed category, they still render.
+
+**Rules for making changes:**
+- Never rename or remove fields from expense JSONL format — only add new ones
+- Never change category `id` values in `DEFAULT_CONFIG` — old expenses reference them
+- Never change `localStorage` keys (`ft_expenses`, `ft_budget_config`)
+- Never change REST API paths — old Service Workers may cache them
+- When adding config fields, add a migration step in `migrateConfig()` and bump `CONFIG_VERSION`
+- Service Worker uses network-first strategy so code updates are picked up immediately

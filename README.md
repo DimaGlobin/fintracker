@@ -18,15 +18,54 @@
 
 Скачай с [nodejs.org](https://nodejs.org/) (версия 18+).
 
-### 2. Скачать и запустить
+### 2. Скачать проект
+
+**Если есть Git:**
 
 ```bash
 git clone https://github.com/dimaglobin/fintracker.git
+```
+
+Если у тебя настроен SSH-ключ для GitHub:
+
+```bash
+git clone git@github.com:dimaglobin/fintracker.git
+```
+
+**Если нет Git или аккаунта на GitHub:**
+
+Скачай ZIP-архив: [github.com/dimaglobin/fintracker/archive/refs/heads/main.zip](https://github.com/dimaglobin/fintracker/archive/refs/heads/main.zip) и распакуй в любую папку.
+
+### 3. Запустить
+
+```bash
 cd fintracker
 npm start
 ```
 
-### 3. Открыть
+**macOS / Linux:**
+
+```bash
+node server.js
+# или с кастомным портом:
+node server.js 8080
+```
+
+**Windows (cmd):**
+
+```cmd
+node server.js
+```
+
+**Windows (PowerShell):**
+
+```powershell
+node server.js
+```
+
+Если порт 3000 занят, передай другой: `node server.js 8080`.
+
+### 4. Открыть
 
 Перейди на [http://localhost:3000](http://localhost:3000).
 
@@ -84,6 +123,32 @@ npm start
 Предложи конкретные суммы в рублях для каждой категории.
 Учти, что я хочу откладывать хотя бы 10-15% дохода.
 Формат ответа — таблица: категория, сумма, % от дохода.
+```
+
+---
+
+## Обновление
+
+### Если клонировал через Git
+
+```bash
+cd fintracker
+git pull
+```
+
+### Если скачивал ZIP
+
+Скачай свежий ZIP, распакуй в ту же папку с заменой файлов. Папку `data/` не трогай — в ней твои данные.
+
+### После обновления
+
+Перезапусти сервер (Ctrl+C, затем снова `npm start`). Все данные в `data/` сохранятся — обновление меняет только код. Миграция конфига происходит автоматически при первом открытии.
+
+Если сервер запущен через pm2 / systemd:
+
+```bash
+pm2 restart fintracker    # pm2
+systemctl restart fintracker  # systemd
 ```
 
 ---

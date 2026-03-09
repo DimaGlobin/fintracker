@@ -260,17 +260,25 @@ function buildCatPicker() {
   if (!config) return;
   const monthExp   = getMonthExpenses();
   const picker     = document.getElementById('catPicker');
-  picker.innerHTML = config.categories.map(cat => {
+
+  const variable = config.categories.filter(c => !c.fixed);
+  const fixed    = config.categories.filter(c => c.fixed);
+
+  function pillHTML(cat) {
     const spent = monthExp.filter(e => e.category_id === cat.id).reduce((s,e) => s+e.amount, 0);
-    const over  = spent >= cat.budget;
-    const badge = over ? `<span class="cat-limit-badge">ЛИМИТ</span>` : '';
+    const over  = cat.budget && spent >= cat.budget;
+    const badge = cat.fixed ? `<span class="cat-limit-badge" style="background:var(--text3)">ФИКС</span>`
+                : over ? `<span class="cat-limit-badge">ЛИМИТ</span>` : '';
     return `
-      <div class="cat-pill ${over ? 'limit-reached' : ''}" data-id="${cat.id}" onclick="selectCat('${cat.id}')">
+      <div class="cat-pill ${over && !cat.fixed ? 'limit-reached' : ''}" data-id="${cat.id}" onclick="selectCat('${cat.id}')">
         ${badge}
         <span class="cat-pill-emoji">${cat.emoji}</span>
         <span class="cat-pill-name">${cat.name.split(' ')[0]}</span>
       </div>`;
-  }).join('');
+  }
+
+  const sep = fixed.length ? '<div style="width:1px;flex-shrink:0;background:var(--border);margin:4px 2px;border-radius:1px"></div>' : '';
+  picker.innerHTML = variable.map(pillHTML).join('') + sep + fixed.map(pillHTML).join('');
 }
 
 function selectCat(id) {
@@ -278,6 +286,10 @@ function selectCat(id) {
   document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('selected'));
   document.querySelector(`.cat-pill[data-id="${id}"]`)?.classList.add('selected');
   updateCatHint();
+  // Фиксированные расходы = необходимость, ставим 0 автоматически
+  const config = getBudgetConfig();
+  const cat = config?.categories.find(c => c.id === id);
+  if (cat?.fixed) selectRegret(0);
   if (navigator.vibrate) navigator.vibrate(8);
 }
 
@@ -288,10 +300,10 @@ function updateCatHint() {
     hint.innerHTML = '<span>Выбери категорию</span><span class="cat-hint-remain">—\u00a0₽</span>';
     return;
   }
-  const cat     = config.categories.find(c => c.id === selectedCat);
+  const cat     = config.categories.find(c => c.id === selectedCat) || { emoji:'❓', name: selectedCat, budget: 0 };
   const spent   = getMonthExpenses().filter(e => e.category_id === selectedCat).reduce((s,e) => s+e.amount, 0);
   const remain  = cat.budget - spent;
-  const cls     = remain < 0 ? 'over' : remain < cat.budget * 0.2 ? 'low' : '';
+  const cls     = remain < 0 ? 'over' : (cat.budget && remain < cat.budget * 0.2) ? 'low' : '';
   const txt     = remain < 0
     ? `ПРЕВЫШЕНО на ${fmtRub(Math.abs(remain))}`
     : `${fmtRub(remain)} осталось`;

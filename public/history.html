@@ -81,19 +81,92 @@
 
   /* Swipe-to-delete container */
   .swipe-wrap { position:relative; overflow:hidden; border-radius:12px; }
-  .swipe-inner { transition:transform 0.25s ease; }
+  .swipe-inner { transition:transform 0.25s ease; position:relative; z-index:1; background:var(--card); border-radius:12px; }
   .delete-reveal {
     position:absolute; right:0; top:0; bottom:0; width:72px;
     background:var(--red); display:flex; align-items:center; justify-content:center;
     border-radius:0 12px 12px 0; cursor:pointer; font-size:18px;
   }
-  .swipe-inner .expense-row { border-radius:12px; }
+  .swipe-inner .expense-row { border-radius:12px; cursor:pointer; }
+  .swipe-inner:active .expense-row { background:var(--bg3); }
 
   /* ── EMPTY ── */
   .empty-state {
     padding:48px 20px; text-align:center; color:var(--text3); font-size:13px; line-height:1.8;
   }
 
+  /* ── EDIT MODAL ── */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100;
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.2s;
+  }
+  .modal-overlay.open { opacity:1; pointer-events:auto; }
+  .modal-sheet {
+    background:var(--bg2); border-radius:20px 20px 0 0; width:100%; max-width:480px;
+    padding:20px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+    transform:translateY(100%); transition:transform 0.25s ease;
+    max-height:85vh; overflow-y:auto;
+  }
+  .modal-overlay.open .modal-sheet { transform:translateY(0); }
+  .modal-handle {
+    width:36px; height:4px; border-radius:2px; background:var(--border2);
+    margin:0 auto 16px;
+  }
+  .modal-title {
+    font-size:16px; font-weight:700; color:var(--text); margin-bottom:16px;
+    text-align:center;
+  }
+  .modal-field { margin-bottom:14px; }
+  .modal-label {
+    font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase;
+    letter-spacing:0.05em; margin-bottom:6px;
+  }
+  .modal-input {
+    width:100%; background:var(--bg3); border:1px solid var(--border);
+    border-radius:12px; padding:12px 14px; font-size:14px;
+    font-family:var(--sans); color:var(--text); outline:none;
+    transition:border-color 0.2s; box-sizing:border-box;
+  }
+  .modal-input:focus { border-color:var(--border2); }
+  .modal-input[type="number"],
+  .modal-input[type="date"] { font-family:var(--mono); color-scheme:dark; }
+  .modal-cat-select {
+    width:100%; background:var(--bg3); border:1px solid var(--border);
+    border-radius:12px; padding:12px 14px; font-size:14px;
+    font-family:var(--sans); color:var(--text); outline:none;
+    transition:border-color 0.2s; color-scheme:dark; box-sizing:border-box;
+  }
+  .modal-regret-row { display:flex; gap:6px; }
+  .modal-regret-btn {
+    flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--border);
+    background:var(--bg3); cursor:pointer; transition:all 0.15s;
+    font-family:var(--mono); font-size:14px; font-weight:700; color:var(--text2);
+    text-align:center;
+  }
+  .modal-regret-btn.sel { border-color:rgba(255,255,255,0.2); }
+  .modal-regret-btn[data-s="0"].sel { background:rgba(0,232,122,0.14);  border-color:var(--green); color:var(--green); }
+  .modal-regret-btn[data-s="1"].sel { background:rgba(0,200,100,0.11);  border-color:#00c864; color:#00c864; }
+  .modal-regret-btn[data-s="2"].sel { background:rgba(245,200,66,0.11); border-color:var(--yellow); color:var(--yellow); }
+  .modal-regret-btn[data-s="3"].sel { background:rgba(255,160,50,0.11); border-color:#ffa032; color:#ffa032; }
+  .modal-regret-btn[data-s="4"].sel { background:rgba(255,100,60,0.11); border-color:#ff643c; color:#ff643c; }
+  .modal-regret-btn[data-s="5"].sel { background:rgba(255,60,80,0.14);  border-color:var(--red); color:var(--red); }
+  .modal-actions { display:flex; gap:10px; margin-top:18px; }
+  .modal-btn {
+    flex:1; padding:14px; border-radius:14px; font-size:14px;
+    font-weight:700; font-family:var(--sans); cursor:pointer; transition:all 0.15s;
+    border:none; text-align:center;
+  }
+  .modal-btn-save { background:var(--green); color:#000; }
+  .modal-btn-save:active { transform:scale(0.97); }
+  .modal-btn-delete { background:rgba(255,77,106,0.12); color:var(--red); border:1px solid rgba(255,77,106,0.25); }
+  .modal-btn-delete:active { transform:scale(0.97); }
+
+  @media (min-width:768px) {
+    .modal-overlay { align-items:center; }
+    .modal-sheet { border-radius:20px; max-width:420px; transform:translateY(20px) scale(0.97); opacity:0; }
+    .modal-overlay.open .modal-sheet { transform:translateY(0) scale(1); opacity:1; }
+  }
 
 </style>
 </head>
@@ -151,6 +224,46 @@
   <div class="expense-groups s4" id="expenseGroups"></div>
 </div>
 
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Редактировать расход</div>
+    <input type="hidden" id="editId">
+    <div class="modal-field">
+      <div class="modal-label">Сумма</div>
+      <input type="number" class="modal-input" id="editAmount" inputmode="numeric" min="1">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Категория</div>
+      <select class="modal-cat-select" id="editCat"></select>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Описание</div>
+      <input type="text" class="modal-input" id="editDesc" placeholder="Необязательно">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Дата</div>
+      <input type="date" class="modal-input" id="editDate">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Оценка сомнения</div>
+      <div class="modal-regret-row" id="editRegretRow">
+        <button class="modal-regret-btn" data-s="0" onclick="setEditRegret(0)">0</button>
+        <button class="modal-regret-btn" data-s="1" onclick="setEditRegret(1)">1</button>
+        <button class="modal-regret-btn" data-s="2" onclick="setEditRegret(2)">2</button>
+        <button class="modal-regret-btn" data-s="3" onclick="setEditRegret(3)">3</button>
+        <button class="modal-regret-btn" data-s="4" onclick="setEditRegret(4)">4</button>
+        <button class="modal-regret-btn" data-s="5" onclick="setEditRegret(5)">5</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-delete" onclick="modalDelete()">Удалить</button>
+      <button class="modal-btn modal-btn-save" onclick="modalSave()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <div class="bottom-nav-inner">
@@ -203,13 +316,31 @@ async function init() {
 function fillCatFilter() {
   const config = getBudgetConfig();
   if (!config) return;
-  const sel = document.getElementById('catFilter');
-  config.categories.forEach(cat => {
+  const sel      = document.getElementById('catFilter');
+  const variable = config.categories.filter(c => !c.fixed);
+  const fixed    = config.categories.filter(c => c.fixed);
+
+  const varGroup = document.createElement('optgroup');
+  varGroup.label = 'Переменные';
+  variable.forEach(cat => {
     const opt = document.createElement('option');
-    opt.value       = cat.id;
+    opt.value = cat.id;
     opt.textContent = cat.emoji + ' ' + cat.name;
-    sel.appendChild(opt);
+    varGroup.appendChild(opt);
   });
+  sel.appendChild(varGroup);
+
+  if (fixed.length > 0) {
+    const fixGroup = document.createElement('optgroup');
+    fixGroup.label = 'Фиксированные';
+    fixed.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.emoji + ' ' + cat.name;
+      fixGroup.appendChild(opt);
+    });
+    sel.appendChild(fixGroup);
+  }
 }
 
 function setPeriod(period) {
@@ -364,7 +495,7 @@ function renderExpenseRow(config, e) {
 
   return `
     <div class="swipe-wrap" data-id="${e.id}">
-      <div class="swipe-inner">
+      <div class="swipe-inner" data-eid="${e.id}">
         <div class="expense-row">
           <div class="expense-emoji">${cat.emoji}</div>
           <div class="expense-info">
@@ -384,27 +515,35 @@ function renderExpenseRow(config, e) {
 // ── SWIPE TO DELETE ────────────────────────────────────────────────
 function attachSwipe() {
   document.querySelectorAll('.swipe-wrap').forEach(wrap => {
-    let startX = 0, dx = 0, swiped = false;
+    let startX = 0, dx = 0;
     const inner = wrap.querySelector('.swipe-inner');
     wrap.addEventListener('touchstart', e => {
       startX = e.touches[0].clientX;
-      swiped = false;
+      dx = 0;
       inner.style.transition = 'none';
     }, { passive:true });
     wrap.addEventListener('touchmove', e => {
       dx = e.touches[0].clientX - startX;
       if (dx < 0) {
         inner.style.transform = `translateX(${Math.max(dx, -72)}px)`;
-        swiped = true;
       }
     }, { passive:true });
     wrap.addEventListener('touchend', () => {
       inner.style.transition = '';
       if (dx < -40) {
         inner.style.transform = 'translateX(-72px)';
+        inner._swiped = true;
       } else {
         inner.style.transform = '';
+        inner._swiped = false;
       }
+    });
+    // Open edit on click, but not when swiping
+    inner.addEventListener('click', () => {
+      if (inner._swiped) { inner.style.transform = ''; inner._swiped = false; return; }
+      if (Math.abs(dx) > 5) return; // was dragging
+      const eid = Number(inner.dataset.eid);
+      if (eid) openEdit(eid);
     });
   });
 }
@@ -412,6 +551,90 @@ function attachSwipe() {
 function confirmDelete(id) {
   if (!confirm('Удалить этот расход?')) return;
   deleteExpense(id);
+  applyFilters();
+}
+
+// ── EDIT MODAL ───────────────────────────────────────────────────
+let editRegret = 3;
+
+function openEdit(id) {
+  const all = loadExpenses();
+  const exp = all.find(e => e.id === id);
+  if (!exp) return;
+
+  const config = getBudgetConfig();
+  const sel = document.getElementById('editCat');
+  sel.innerHTML = '';
+  const variable = config.categories.filter(c => !c.fixed);
+  const fixed    = config.categories.filter(c => c.fixed);
+
+  const varGrp = document.createElement('optgroup');
+  varGrp.label = 'Переменные';
+  variable.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.id; o.textContent = c.emoji + ' ' + c.name;
+    varGrp.appendChild(o);
+  });
+  sel.appendChild(varGrp);
+
+  if (fixed.length) {
+    const fixGrp = document.createElement('optgroup');
+    fixGrp.label = 'Фиксированные';
+    fixed.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.emoji + ' ' + c.name;
+      fixGrp.appendChild(o);
+    });
+    sel.appendChild(fixGrp);
+  }
+
+  document.getElementById('editId').value     = id;
+  document.getElementById('editAmount').value  = exp.amount;
+  sel.value                                    = exp.category_id;
+  document.getElementById('editDesc').value    = exp.description || '';
+  document.getElementById('editDate').value    = exp.date;
+  setEditRegret(exp.regret_score);
+
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+function setEditRegret(n) {
+  editRegret = n;
+  document.querySelectorAll('#editRegretRow .modal-regret-btn').forEach(b => {
+    b.classList.toggle('sel', Number(b.dataset.s) === n);
+  });
+}
+
+function modalSave() {
+  const id     = Number(document.getElementById('editId').value);
+  const amount = Number(document.getElementById('editAmount').value);
+  if (!amount || amount <= 0) return;
+
+  updateExpense(id, {
+    amount:       amount,
+    category_id:  document.getElementById('editCat').value,
+    description:  document.getElementById('editDesc').value.trim(),
+    date:         document.getElementById('editDate').value,
+    regret_score: editRegret,
+  });
+
+  closeModal();
+  applyFilters();
+}
+
+function modalDelete() {
+  const id = Number(document.getElementById('editId').value);
+  if (!confirm('Удалить этот расход?')) return;
+  deleteExpense(id);
+  closeModal();
   applyFilters();
 }
 

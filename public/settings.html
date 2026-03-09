@@ -267,11 +267,12 @@ function renderIncome(config) {
   document.getElementById('incomeInput').value = config.monthly_income;
 }
 
-// ── CATEGORY BUDGETS ──────────────────────────────────────────────
+// ── CATEGORY BUDGETS (переменные) ─────────────────────────────────
 
 function renderCatBudgets(config) {
   const cont = document.getElementById('catBudgets');
-  cont.innerHTML = config.categories.map((cat, i) => `
+  const variable = config.categories.filter(c => !c.fixed);
+  cont.innerHTML = variable.map(cat => `
     <div class="settings-row">
       <div class="settings-row-left">
         <div class="settings-row-label">
@@ -285,7 +286,8 @@ function renderCatBudgets(config) {
                onkeydown="if(event.key==='Enter')blur()">
         <span class="budget-rub">₽</span>
       </div>
-    </div>`).join('');
+    </div>`).join('') +
+    `<div class="add-btn-row" onclick="addCategory(false)">+ Добавить категорию</div>`;
 }
 
 function saveCatBudget(id, input) {
@@ -294,66 +296,74 @@ function saveCatBudget(id, input) {
   const config = getBudgetConfig();
   const cat    = config.categories.find(c => c.id === id);
   if (cat) cat.budget = val;
-  recalcVariableTotal(config);
   saveBudgetConfig(config);
   updateTotals(config);
   showSaveNotice();
 }
 
-function recalcVariableTotal(config) {
-  config.budget_summary.total_variable_budget = config.categories.reduce((s,c) => s+c.budget, 0);
-}
-
-// ── FIXED ─────────────────────────────────────────────────────────
+// ── FIXED (фиксированные — тоже категории с fixed:true) ──────────
 
 function renderFixed(config) {
-  const cont = document.getElementById('fixedList');
-  cont.innerHTML = config.fixed_expenses.map((f, i) => `
+  const cont  = document.getElementById('fixedList');
+  const fixed = config.categories.filter(c => c.fixed);
+  cont.innerHTML = fixed.map(cat => `
     <div class="settings-row" style="gap:8px">
-      <input class="fixed-emoji-input" value="${f.emoji}" data-fi="${i}" data-field="emoji"
-             onblur="saveFixed()" title="Эмодзи">
-      <input class="fixed-name-input" value="${f.name}" data-fi="${i}" data-field="name"
-             onblur="saveFixed()" placeholder="Название">
+      <input class="fixed-emoji-input" value="${cat.emoji}" data-fid="${cat.id}" data-field="emoji"
+             onblur="saveFixedField()" title="Эмодзи">
+      <input class="fixed-name-input" value="${cat.name}" data-fid="${cat.id}" data-field="name"
+             onblur="saveFixedField()" placeholder="Название">
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-        <input class="fixed-input" type="number" value="${f.amount}" data-fi="${i}" data-field="amount"
-               onblur="saveFixed()" onkeydown="if(event.key==='Enter')blur()" inputmode="numeric" placeholder="0">
+        <input class="fixed-input" type="number" value="${cat.budget}" data-fid="${cat.id}" data-field="budget"
+               onblur="saveFixedField()" onkeydown="if(event.key==='Enter')blur()" inputmode="numeric" placeholder="0">
         <span class="budget-rub">₽</span>
       </div>
-      <button class="fixed-del" onclick="removeFixed(${i})" title="Удалить">✕</button>
+      <button class="fixed-del" onclick="removeCategory('${cat.id}')" title="Удалить">✕</button>
     </div>`).join('') +
-    `<div class="add-btn-row" onclick="addFixed()">+ Добавить статью</div>`;
-  document.getElementById('fixedTotal').textContent =
-    fmtRub(config.fixed_expenses.reduce((s, f) => s + f.amount, 0));
+    `<div class="add-btn-row" onclick="addCategory(true)">+ Добавить статью</div>`;
 }
 
-function saveFixed() {
+function saveFixedField() {
   const config = getBudgetConfig();
-  document.querySelectorAll('[data-fi]').forEach(el => {
-    const i     = parseInt(el.dataset.fi);
+  document.querySelectorAll('[data-fid]').forEach(el => {
+    const id    = el.dataset.fid;
     const field = el.dataset.field;
-    if (!config.fixed_expenses[i]) return;
-    config.fixed_expenses[i][field] = field === 'amount' ? (parseInt(el.value) || 0) : el.value;
+    const cat   = config.categories.find(c => c.id === id);
+    if (!cat) return;
+    cat[field] = field === 'budget' ? (parseInt(el.value) || 0) : el.value;
   });
   saveBudgetConfig(config);
   updateTotals(config);
   showSaveNotice();
 }
 
-function addFixed() {
+function addCategory(fixed) {
   const config = getBudgetConfig();
-  config.fixed_expenses.push({ name: '', emoji: '📌', amount: 0 });
+  const id = (fixed ? 'fixed_' : 'cat_') + Date.now();
+  config.categories.push({
+    id,
+    name:  '',
+    emoji: fixed ? '📌' : '🏷',
+    budget: 0,
+    color: fixed ? '#607D8B' : '#78909C',
+    notes: '',
+    fixed: !!fixed,
+  });
   saveBudgetConfig(config);
-  renderFixed(config);
+  if (fixed) {
+    renderFixed(config);
+    const inputs = document.querySelectorAll('.fixed-name-input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  } else {
+    renderCatBudgets(config);
+  }
   updateTotals(config);
-  // Focus new row name input
-  const inputs = document.querySelectorAll('.fixed-name-input');
-  if (inputs.length) inputs[inputs.length - 1].focus();
 }
 
-function removeFixed(idx) {
+function removeCategory(id) {
   const config = getBudgetConfig();
-  config.fixed_expenses.splice(idx, 1);
+  config.categories = config.categories.filter(c => c.id !== id);
   saveBudgetConfig(config);
+  renderCatBudgets(config);
   renderFixed(config);
   updateTotals(config);
   showSaveNotice();
@@ -362,8 +372,9 @@ function removeFixed(idx) {
 // ── TOTALS & BALANCE ──────────────────────────────────────────────
 
 function updateTotals(config) {
-  const varTotal   = config.categories.reduce((s,c) => s+c.budget, 0);
-  const fixedTotal = config.fixed_expenses.reduce((s,f) => s+f.amount, 0);
+  const cats = config.categories || [];
+  const varTotal   = cats.filter(c => !c.fixed).reduce((s,c) => s + (c.budget || 0), 0);
+  const fixedTotal = cats.filter(c => c.fixed).reduce((s,c) => s + (c.budget || 0), 0);
   const freeMoney  = config.monthly_income - fixedTotal - varTotal;
 
   document.getElementById('varTotal').textContent   = fmtRub(varTotal);
@@ -495,7 +506,7 @@ function saveField(field) {
   if (field === 'income') {
     const val = parseInt(document.getElementById('incomeInput').value, 10);
     if (val > 0) {
-      const allZero = config.categories.every(c => !c.budget);
+      const allZero = config.categories.filter(c => !c.fixed).every(c => !c.budget);
       config.monthly_income = val;
       if (allZero) {
         distributeBudget(config, val);
