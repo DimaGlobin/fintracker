@@ -116,6 +116,53 @@
     padding:10px 14px; background:var(--bg3); border-radius:10px;
   }
 
+  /* ── ALLOCATION BAR ── */
+  .alloc-card {
+    margin:0 20px 16px; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px;
+  }
+  .alloc-bar {
+    display:flex; height:10px; border-radius:99px; overflow:hidden; gap:2px;
+    margin-bottom:14px;
+  }
+  .alloc-seg {
+    border-radius:99px; transition:width 0.5s cubic-bezier(.4,0,.2,1);
+    min-width:0; overflow:hidden;
+  }
+  .alloc-rows { display:flex; flex-direction:column; gap:8px; }
+  .alloc-row {
+    display:flex; align-items:center; gap:10px;
+  }
+  .alloc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .alloc-name { font-size:13px; color:var(--text2); font-weight:600; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .alloc-pct  { font-family:var(--mono); font-size:11px; color:var(--text3); font-weight:600; flex-shrink:0; width:32px; text-align:right; }
+  .alloc-amt  { font-family:var(--mono); font-size:13px; font-weight:700; flex-shrink:0; width:90px; text-align:right; }
+  .alloc-overbudget {
+    margin-top:10px; padding:8px 12px; background:var(--red-dim);
+    border:1px solid rgba(255,77,106,0.2); border-radius:10px;
+    font-size:12px; color:var(--red); font-weight:600;
+  }
+
+  /* ── SAVINGS ── */
+  .savings-input {
+    font-family:var(--mono); font-size:14px; font-weight:700;
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    padding:6px 10px; color:var(--text); outline:none; width:100px;
+    text-align:right; transition:border-color 0.2s;
+  }
+  .savings-input:focus { border-color:rgba(0,232,122,0.4); }
+  .savings-name-input {
+    background:transparent; border:none; outline:none;
+    font-size:14px; font-weight:600; color:var(--text);
+    font-family:var(--sans); min-width:0; flex:1;
+  }
+  .savings-emoji-input {
+    background:transparent; border:none; outline:none;
+    font-size:18px; width:28px; text-align:center; cursor:pointer;
+  }
+  .savings-del { background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; padding:4px; }
+  .savings-del:hover { color:var(--red); }
+
   /* ── DANGER ZONE ── */
   .danger-block { margin:0 20px 16px; }
   .danger-btn {
@@ -125,6 +172,15 @@
   }
   .danger-btn:hover { border-color:rgba(255,77,106,0.5); }
   .danger-btn:active { transform:scale(0.98); }
+
+  /* ── THEME TOGGLE ── */
+  .theme-toggle { display:flex; gap:4px; background:var(--bg3); border-radius:10px; padding:3px; }
+  .theme-btn {
+    padding:7px 14px; border-radius:8px; border:none; background:transparent;
+    font-size:12px; font-weight:600; font-family:var(--sans); color:var(--text2);
+    cursor:pointer; transition:all 0.15s; white-space:nowrap;
+  }
+  .theme-btn.active { background:var(--card); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.2); }
 
   /* ── SAVE NOTICE ── */
   .save-notice {
@@ -159,6 +215,22 @@
   <div class="fs-hint" id="fsHint">
     💡 Подключи папку на диске — расходы будут сохраняться в <strong>JSONL-файлах</strong> (один файл = один месяц).
     Данные останутся при очистке браузера, их легко скопировать и открыть в любом редакторе.
+  </div>
+
+  <!-- THEME -->
+  <div class="section-title s1">Оформление</div>
+  <div class="settings-block s1">
+    <div class="card">
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Тема</div>
+        </div>
+        <div class="theme-toggle" id="themeToggle">
+          <button class="theme-btn" data-theme="dark" onclick="switchTheme('dark')">🌙 Тёмная</button>
+          <button class="theme-btn" data-theme="light" onclick="switchTheme('light')">☀️ Светлая</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- INCOME -->
@@ -196,19 +268,19 @@
     <span class="total-val" id="fixedTotal" style="color:var(--text2)">—</span>
   </div>
 
-  <!-- BALANCE SUMMARY -->
-  <div class="section-title s4">Баланс</div>
+  <!-- SAVINGS -->
+  <div class="section-title s4">Накопления и резервы</div>
   <div class="settings-block s4">
-    <div class="card">
-      <div class="settings-row" id="balanceRow">
-        <div class="settings-row-left">
-          <div class="settings-row-label">Свободные деньги</div>
-          <div class="settings-row-sub">доход − фикс. − перем.</div>
-        </div>
-        <div style="font-family:var(--mono);font-size:16px;font-weight:800" id="freeMoneyVal">—</div>
-      </div>
-    </div>
+    <div class="card" id="savingsList"></div>
   </div>
+  <div class="total-row s4" style="background:var(--bg3);border-color:var(--border)">
+    <span class="total-label">Итого накопления</span>
+    <span class="total-val" id="savingsTotal" style="color:var(--text2)">—</span>
+  </div>
+
+  <!-- ALLOCATION -->
+  <div class="section-title s5">Куда уходит доход</div>
+  <div class="alloc-card s5" id="allocCard"></div>
 
   <!-- DANGER ZONE -->
   <div class="section-title s5" style="color:var(--red)">Опасная зона</div>
@@ -250,6 +322,19 @@ async function init() {
   await initStorage();
   renderAll();
   renderFileStorage();
+  renderThemeToggle();
+}
+
+function renderThemeToggle() {
+  const current = getTheme();
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === current);
+  });
+}
+
+function switchTheme(theme) {
+  setTheme(theme);
+  renderThemeToggle();
 }
 
 function renderAll() {
@@ -258,6 +343,7 @@ function renderAll() {
   renderIncome(config);
   renderCatBudgets(config);
   renderFixed(config);
+  renderSavings(config);
   updateTotals(config);
 }
 
@@ -369,32 +455,155 @@ function removeCategory(id) {
   showSaveNotice();
 }
 
-// ── TOTALS & BALANCE ──────────────────────────────────────────────
+// ── SAVINGS ───────────────────────────────────────────────────────
+
+function renderSavings(config) {
+  const cont = document.getElementById('savingsList');
+  const list = config.savings_plan || [];
+  cont.innerHTML = list.map(s => `
+    <div class="settings-row" style="gap:8px">
+      <input class="savings-emoji-input" value="${s.emoji || '🎯'}" data-sid="${s.id}" data-field="emoji"
+             onblur="saveSavingsField()" title="Эмодзи">
+      <input class="savings-name-input" value="${s.name || ''}" data-sid="${s.id}" data-field="name"
+             onblur="saveSavingsField()" placeholder="Название">
+      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+        <input class="savings-input" type="number" value="${s.monthly || 0}" data-sid="${s.id}" data-field="monthly"
+               onblur="saveSavingsField()" onkeydown="if(event.key==='Enter')blur()" inputmode="numeric" placeholder="0">
+        <span class="budget-rub">₽/мес</span>
+      </div>
+      <button class="savings-del" onclick="removeSavings('${s.id}')" title="Удалить">✕</button>
+    </div>`).join('') +
+    `<div class="add-btn-row" onclick="addSavings()">+ Добавить</div>`;
+}
+
+function saveSavingsField() {
+  const config = getBudgetConfig();
+  if (!config.savings_plan) config.savings_plan = [];
+  document.querySelectorAll('[data-sid]').forEach(el => {
+    const id    = el.dataset.sid;
+    const field = el.dataset.field;
+    const item  = config.savings_plan.find(s => s.id === id);
+    if (!item) return;
+    item[field] = field === 'monthly' ? (parseInt(el.value) || 0) : el.value;
+  });
+  saveBudgetConfig(config);
+  updateTotals(config);
+  showSaveNotice();
+}
+
+function addSavings() {
+  const config = getBudgetConfig();
+  if (!config.savings_plan) config.savings_plan = [];
+  config.savings_plan.push({ id: 'savings_' + Date.now(), name: '', emoji: '🎯', monthly: 0 });
+  saveBudgetConfig(config);
+  renderSavings(config);
+  updateTotals(config);
+  const inputs = document.querySelectorAll('.savings-name-input');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function removeSavings(id) {
+  const config = getBudgetConfig();
+  config.savings_plan = (config.savings_plan || []).filter(s => s.id !== id);
+  saveBudgetConfig(config);
+  renderSavings(config);
+  updateTotals(config);
+  showSaveNotice();
+}
+
+// ── TOTALS & ALLOCATION ───────────────────────────────────────────
+
+const ALLOC_COLORS = {
+  variable: '#4d9fff',
+  fixed:    '#f5a623',
+  savings:  '#00c864',
+  free:     '#9090a0',
+};
 
 function updateTotals(config) {
-  const cats = config.categories || [];
-  const varTotal   = cats.filter(c => !c.fixed).reduce((s,c) => s + (c.budget || 0), 0);
-  const fixedTotal = cats.filter(c => c.fixed).reduce((s,c) => s + (c.budget || 0), 0);
-  const freeMoney  = config.monthly_income - fixedTotal - varTotal;
+  const cats        = config.categories || [];
+  const varTotal    = cats.filter(c => !c.fixed).reduce((s,c) => s + (c.budget || 0), 0);
+  const fixedTotal  = cats.filter(c => c.fixed).reduce((s,c) => s + (c.budget || 0), 0);
+  const savingsItems = config.savings_plan || [];
+  const savingsTotal = savingsItems.reduce((s,p) => s + (p.monthly || 0), 0);
+  const income      = config.monthly_income || 0;
+  const allocated   = varTotal + fixedTotal + savingsTotal;
+  const freeMoney   = income - allocated;
 
-  document.getElementById('varTotal').textContent   = fmtRub(varTotal);
-  document.getElementById('fixedTotal').textContent = fmtRub(fixedTotal);
+  document.getElementById('varTotal').textContent     = fmtRub(varTotal);
+  document.getElementById('fixedTotal').textContent   = fmtRub(fixedTotal);
+  document.getElementById('savingsTotal').textContent = fmtRub(savingsTotal);
 
-  const freeEl  = document.getElementById('freeMoneyVal');
-  const warnTxt = document.getElementById('varWarnText');
+  const warnTxt  = document.getElementById('varWarnText');
   const totalRow = document.getElementById('varTotalRow');
-
-  freeEl.textContent = fmtRub(freeMoney);
-  freeEl.style.color = freeMoney < 0 ? 'var(--red)' : freeMoney < 10000 ? 'var(--yellow)' : 'var(--green)';
-
   if (freeMoney < 0) {
     totalRow.classList.add('warn');
     warnTxt.style.display = 'block';
-    warnTxt.textContent = `⚠️ Сумма категорий превышает доступный бюджет на ${fmtRub(Math.abs(freeMoney))}`;
+    warnTxt.textContent = `⚠️ Сумма конвертов превышает доход на ${fmtRub(Math.abs(freeMoney))}`;
   } else {
     totalRow.classList.remove('warn');
     warnTxt.style.display = 'none';
   }
+
+  renderAllocation(config, income, varTotal, fixedTotal, savingsItems, freeMoney);
+}
+
+function renderAllocation(config, income, varTotal, fixedTotal, savingsItems, freeMoney) {
+  const cont = document.getElementById('allocCard');
+  if (!income) {
+    cont.innerHTML = `<div style="font-size:13px;color:var(--text3);text-align:center;padding:8px 0">Укажи доход, чтобы увидеть распределение</div>`;
+    return;
+  }
+
+  const pct = v => income > 0 ? Math.max(0, Math.round(v / income * 100)) : 0;
+
+  // Строим сегменты для бара
+  const segments = [];
+  if (varTotal > 0)    segments.push({ color: ALLOC_COLORS.variable, w: varTotal });
+  if (fixedTotal > 0)  segments.push({ color: ALLOC_COLORS.fixed,    w: fixedTotal });
+  savingsItems.filter(s => s.monthly > 0).forEach(s => {
+    segments.push({ color: ALLOC_COLORS.savings, w: s.monthly });
+  });
+  const freeAmt = Math.max(0, freeMoney);
+  if (freeAmt > 0)     segments.push({ color: ALLOC_COLORS.free,     w: freeAmt });
+
+  const barHTML = segments.map(s =>
+    `<div class="alloc-seg" style="background:${s.color};width:${Math.max(s.w/income*100,0.5)}%;flex:none"></div>`
+  ).join('');
+
+  // Строки таблицы
+  const rows = [];
+  if (varTotal > 0) rows.push({
+    color: ALLOC_COLORS.variable, label: 'Переменные расходы', amt: varTotal, pct: pct(varTotal),
+  });
+  if (fixedTotal > 0) rows.push({
+    color: ALLOC_COLORS.fixed, label: 'Фиксированные расходы', amt: fixedTotal, pct: pct(fixedTotal),
+  });
+  savingsItems.forEach(s => {
+    if (s.monthly > 0) rows.push({
+      color: ALLOC_COLORS.savings, label: (s.emoji ? s.emoji + ' ' : '') + (s.name || 'Накопления'),
+      amt: s.monthly, pct: pct(s.monthly),
+    });
+  });
+  const freeColor = freeMoney < 0 ? 'var(--red)' : freeMoney < 5000 ? 'var(--yellow)' : 'var(--text3)';
+  rows.push({
+    color: freeColor,
+    label: freeMoney < 0 ? '⚠️ Перерасход' : 'Не распределено',
+    amt: freeMoney, pct: pct(Math.abs(freeMoney)),
+    amtColor: freeColor,
+  });
+
+  const rowsHTML = rows.map(r => `
+    <div class="alloc-row">
+      <div class="alloc-dot" style="background:${r.color}"></div>
+      <div class="alloc-name">${r.label}</div>
+      <div class="alloc-pct" style="color:${r.color}">${r.pct}%</div>
+      <div class="alloc-amt" style="color:${r.amtColor || 'var(--text)'}">${fmtRub(r.amt)}</div>
+    </div>`).join('');
+
+  cont.innerHTML = `
+    <div class="alloc-bar">${barHTML || '<div class="alloc-seg" style="background:var(--border);width:100%"></div>'}</div>
+    <div class="alloc-rows">${rowsHTML}</div>`;
 }
 
 // ── FILE STORAGE UI ───────────────────────────────────────────────
@@ -513,6 +722,7 @@ function saveField(field) {
       }
       saveBudgetConfig(config);
       renderCatBudgets(config);
+      renderSavings(config);
       updateTotals(config);
       showSaveNotice();
     }

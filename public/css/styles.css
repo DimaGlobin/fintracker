@@ -4,7 +4,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
 
-:root {
+:root, [data-theme="dark"] {
   --bg:          #080810;
   --bg2:         #0f0f1a;
   --bg3:         #16162a;
@@ -24,14 +24,40 @@
   --text:        #e8e8f0;
   --text2:       #888899;
   --text3:       #484860;
+  --nav-bg:      rgba(8,8,16,0.94);
   --mono:        'JetBrains Mono', monospace;
   --sans:        'Manrope', sans-serif;
   --radius:      16px;
   --nav-h:       72px;
 }
 
+[data-theme="light"] {
+  --bg:          #f2f2f7;
+  --bg2:         #e8e8f0;
+  --bg3:         #dcdce5;
+  --card:        #ffffff;
+  --card2:       #f5f5fa;
+  --border:      rgba(0,0,0,0.08);
+  --border2:     rgba(0,0,0,0.15);
+  --green:       #00b860;
+  --green-dim:   rgba(0,184,96,0.10);
+  --green-glow:  rgba(0,184,96,0.18);
+  --yellow:      #c89e00;
+  --yellow-dim:  rgba(200,158,0,0.10);
+  --red:         #e03050;
+  --red-dim:     rgba(224,48,80,0.10);
+  --blue:        #2870d0;
+  --blue-dim:    rgba(40,112,208,0.10);
+  --text:        #1a1a2e;
+  --text2:       #5c5c70;
+  --text3:       #9090a0;
+  --nav-bg:      rgba(242,242,247,0.94);
+}
+
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 html { font-size:16px; -webkit-tap-highlight-color: transparent; }
+[data-theme="dark"]  { color-scheme: dark; }
+[data-theme="light"] { color-scheme: light; }
 body {
   background: var(--bg);
   color: var(--text);
@@ -47,6 +73,7 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
   pointer-events: none; z-index:0; opacity:0.5;
 }
+[data-theme="light"] body::before { opacity:0 !important; }
 
 /* Layout */
 .app { max-width:480px; margin:0 auto; padding:0 0 calc(var(--nav-h) + 12px); position:relative; z-index:1; }
@@ -57,7 +84,7 @@ body::before {
 /* ── BOTTOM NAV ──────────────────────────────────────────────── */
 .bottom-nav {
   position: fixed; bottom:0; left:0; right:0;
-  background: rgba(8,8,16,0.94); backdrop-filter: blur(24px);
+  background: var(--nav-bg); backdrop-filter: blur(24px);
   border-top: 1px solid var(--border);
   display: flex; justify-content: center;
   padding: 8px 0 env(safe-area-inset-bottom, 12px);

@@ -716,6 +716,31 @@ function exportToCSV(dateFrom, dateTo) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════════════
+
+const THEME_KEY = 'ft_theme';
+const THEME_COLORS = { dark: '#080810', light: '#f2f2f7' };
+
+function getTheme() {
+  return localStorage.getItem(THEME_KEY) || 'dark';
+}
+
+function setTheme(theme) {
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = THEME_COLORS[theme] || THEME_COLORS.dark;
+}
+
+// Применяем тему сразу при загрузке скрипта (до init), чтобы не было вспышки
+applyTheme(getTheme());
+
+// ═══════════════════════════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════════════════════════
 
